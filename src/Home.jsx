@@ -32,6 +32,33 @@ const StoryCard = ({ user }) => {
   );
 };
 
+const BookshelfCard = ({ user }) => (
+  <div className="min-w-[420px] rounded-xl shadow-lg p-4 bg-white mr-4 hover:shadow-xl transition">
+    <h3 className="text-center font-semibold text-lg mb-2">{user.username}'s Shelf</h3>
+    <div className="relative w-[400px] h-[600px] mx-auto bg-cover rounded" style={{ backgroundImage: `url(${bookshelfImg})` }}>
+      {user.books.map((book, idx) => {
+        const shelf = Math.floor(idx / 3) % ShelfY.length;
+        const posX = shelfLefts[idx % 3];
+        return (
+          <img
+            key={book.id}
+            src={book.thumbnail}
+            alt={book.title}
+            className="absolute cursor-pointer hover:scale-110 transition"
+            title={book.title}
+            style={{
+              top: ShelfY[shelf] - 100,
+              left: posX,
+              width: "80px",
+              height: "100px"
+            }}
+          />
+        );
+      })}
+    </div>
+  </div>
+);
+
 export default function Home({ users, onStoryClick }) {
   return (
     <div className="p-4 space-y-8">
@@ -43,32 +70,9 @@ export default function Home({ users, onStoryClick }) {
       </div>
 
       <h2 className="text-xl font-bold mb-2">📚 Bookshelves</h2>
-      <div className="flex gap-8 overflow-x-auto">
+      <div className="flex overflow-x-auto pb-4">
         {users.map((user) => (
-          <div key={user.username} className="min-w-[400px]">
-            <h3 className="font-semibold text-center text-lg mb-1">{user.username}'s Shelf</h3>
-            <div className="relative w-[400px] h-[600px] bg-cover" style={{ backgroundImage: `url(${bookshelfImg})` }}>
-              {user.books.map((book, idx) => {
-                const shelf = Math.floor(idx / 3) % ShelfY.length;
-                const posX = shelfLefts[idx % 3];
-                return (
-                  <img
-                    key={book.id}
-                    src={book.thumbnail}
-                    alt={book.title}
-                    className="absolute cursor-pointer hover:scale-110 transition"
-                    title={book.title}
-                    style={{
-                      top: ShelfY[shelf] - 100,
-                      left: posX,
-                      width: "80px",
-                      height: "100px"
-                    }}
-                  />
-                );
-              })}
-            </div>
-          </div>
+          <BookshelfCard key={user.username} user={user} />
         ))}
       </div>
     </div>
