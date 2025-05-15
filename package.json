@@ -1,6 +1,6 @@
 
 {
-  "name": "metabook",
+  "name": "metabook-pro",
   "version": "1.0.0",
   "scripts": {
     "dev": "vite",
