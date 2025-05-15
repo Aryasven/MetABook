@@ -2,6 +2,7 @@
 import React from "react";
 import bookshelfImg from "./assets/bookshelf.png";
 import { ChatBubbleOvalLeftEllipsisIcon, GiftIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
+import { useEffect, useState } from "react";
 
 const ShelfY = [132, 275, 414, 556];
 const shelfLefts = [20, 130, 240];
@@ -32,11 +33,29 @@ const StoryCard = ({ user }) => {
   );
 };
 
-const BookshelfCard = ({ user }) => (
+
+
+const BookshelfCard = ({ user }) => {
+  const [booksWithCovers, setBooksWithCovers] = useState([]);
+
+  useEffect(() => {
+    const fetchThumbnails = async () => {
+      const results = await Promise.all(booksWithCovers.map(async (book) => {
+        if (book.thumbnail) return book;
+        const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=intitle:${encodeURIComponent(book.title)}`);
+        const data = await res.json();
+        const thumb = data.items?.[0]?.volumeInfo?.imageLinks?.thumbnail;
+        return { ...book, thumbnail: thumb || "" };
+      }));
+      setBooksWithCovers(results);
+    };
+    fetchThumbnails();
+  }, [user.books]);
+  return(
   <div className="min-w-[420px] rounded-xl shadow-lg p-4 bg-white mr-4 hover:shadow-xl transition">
     <h3 className="text-center font-semibold text-lg mb-2">{user.username}'s Shelf</h3>
     <div className="relative w-[400px] h-[600px] mx-auto bg-cover rounded" style={{ backgroundImage: `url(${bookshelfImg})` }}>
-      {user.books.map((book, idx) => {
+      {booksWithCovers.map((book, idx) => {
         const shelf = Math.floor(idx / 3) % ShelfY.length;
         const posX = shelfLefts[idx % 3];
         return (
@@ -58,6 +77,7 @@ const BookshelfCard = ({ user }) => (
     </div>
   </div>
 );
+};
 
 export default function Home({ users, onStoryClick }) {
   return (

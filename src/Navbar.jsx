@@ -7,7 +7,7 @@ export default function Navbar({ user, onLogout }) {
     <nav className="bg-white shadow-md p-4 flex justify-between items-center sticky top-0 z-10">
       <div className="flex gap-4 font-semibold">
         <Link to="/home" className="hover:text-blue-600">Home</Link>
-        {user && <Link to="/profile" className="hover:text-blue-600">Profile</Link>}
+        {user && <Link to="/profile" className="hover:text-blue-600">My Profile</Link>}
       </div>
       <div className="flex gap-4">
         {!user ? (
