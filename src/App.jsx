@@ -1,9 +1,10 @@
-
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import WelcomePage from "./WelcomePage";
 import Home from "./Home";
 import Navbar from "./Navbar";
+import Login from "./Login";
+import Register from "./Register";
 
 const dummyUsers = [
   {
@@ -62,24 +63,9 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/" element={<WelcomePage />} />
-        <Route
-          path="/home"
-          element={
-            <>
-              <Navbar user={user} onLogout={logout} />
-              <Home users={users} onStoryClick={setStoryUser} />
-              {storyUser && (
-                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-20">
-                  <div className="bg-white p-6 rounded shadow-lg max-w-md w-full relative">
-                    <button onClick={() => setStoryUser(null)} className="absolute top-2 right-2">✖</button>
-                    <h2 className="text-xl font-bold">{storyUser.username}'s Story</h2>
-                    <p className="mt-4">{storyUser.stories[0]?.text}</p>
-                  </div>
-                </div>
-              )}
-            </>
-          }
-        />
+        <Route path="/home" element={<Home users={users} onStoryClick={setStoryUser} />} />
+        <Route path="/login" element={<Login setUser={setUser} />} />
+        <Route path="/register" element={<Register setUser={setUser} />} />
       </Routes>
     </Router>
   );

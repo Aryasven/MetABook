@@ -1,36 +1,48 @@
 
 import React from "react";
 import bookshelfImg from "./assets/bookshelf.png";
+import { ChatBubbleOvalLeftEllipsisIcon, GiftIcon, ArrowsRightLeftIcon } from "@heroicons/react/24/solid";
 
 const ShelfY = [132, 275, 414, 556];
 const shelfLefts = [20, 130, 240];
 
-const StoryCircle = ({ user, onClick }) => {
-  const color = {
-    review: "ring-blue-500",
-    swap: "ring-green-500",
-    giveaway: "ring-purple-500"
-  }[user.stories[0]?.type] || "ring-gray-300";
+const StoryCard = ({ user }) => {
+  const type = user.stories[0]?.type;
+  const iconMap = {
+    review: ChatBubbleOvalLeftEllipsisIcon,
+    giveaway: GiftIcon,
+    swap: ArrowsRightLeftIcon
+  };
+  const Icon = iconMap[type] || ChatBubbleOvalLeftEllipsisIcon;
+  const colorMap = {
+    review: "bg-blue-100 text-blue-700",
+    giveaway: "bg-purple-100 text-purple-700",
+    swap: "bg-green-100 text-green-700"
+  };
+  const colorClass = colorMap[type] || "bg-gray-100 text-gray-700";
 
   return (
-    <div onClick={() => onClick(user)} className={`w-20 h-20 rounded-full ring-4 ${color} ring-offset-2 flex items-center justify-center cursor-pointer hover:scale-105 transition`}>
-      <img src="https://via.placeholder.com/60" alt={user.username} className="w-16 h-16 rounded-full object-cover" />
+    <div className={`min-w-[200px] max-w-xs rounded-xl shadow-md p-4 mr-4 ${colorClass} hover:shadow-lg transition`}>
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="h-6 w-6" />
+        <span className="font-semibold">{user.username}</span>
+      </div>
+      <p className="text-sm italic">“{user.stories[0]?.text}”</p>
     </div>
   );
 };
 
 export default function Home({ users, onStoryClick }) {
   return (
-    <div className="p-4 space-y-6">
-      <div className="flex gap-4 overflow-x-auto pb-4 border-b">
+    <div className="p-4 space-y-8">
+      <h2 className="text-xl font-bold mb-2">📢 What others are sharing</h2>
+      <div className="flex overflow-x-auto pb-2">
         {users.map((user) => (
-          <div key={user.username} className="flex flex-col items-center text-sm">
-            <StoryCircle user={user} onClick={onStoryClick} />
-            <p className="mt-1">{user.username}</p>
-          </div>
+          <StoryCard key={user.username} user={user} />
         ))}
       </div>
 
+      <h2 className="text-xl font-bold mb-2">📚 Bookshelves</h2>
       <div className="flex gap-8 overflow-x-auto">
         {users.map((user) => (
           <div key={user.username} className="min-w-[400px]">
