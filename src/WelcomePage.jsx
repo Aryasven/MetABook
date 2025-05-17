@@ -39,8 +39,10 @@ export default function WelcomePage() {
       </div>
 
       <div className="z-10 text-center space-y-6">
-        <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto" />
-        <p className="text-xl text-gray-700 italic">the place for book-lovers</p>
+        <div className="space-y-1">
+          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-20" />
+          <p className="text-xl text-gray-700 italic">the place for book-lovers</p>
+        </div>
 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-10">
           {features.map(({ icon: Icon, label }) => (

@@ -7,6 +7,8 @@ import Navbar from "./Navbar";
 import Login from "./Login";
 import Register from "./Register";
 import "./index.css";
+import { AuthProvider } from './useAuth';
+import ShelfView from "./tabs/ShelfView";
 
 const dummyUsers = [
   {
@@ -62,15 +64,18 @@ export default function App() {
   };
 
   return (
-    <Router>
-      <Navbar user={user} onLogout={logout} />
-      <Routes>
-        <Route path="/" element={<WelcomePage />} />
-        <Route path="/home" element={<Home users={users} onStoryClick={setStoryUser} />} />
-        <Route path="/login" element={<Login setUser={setUser} />} />
-        <Route path="/register" element={<Register setUser={setUser} />} />
-        <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        <Navbar user={user} onLogout={logout} />
+        <Routes>
+          <Route path="/" element={<WelcomePage />} />
+          <Route path="/home" element={<Home users={users} onStoryClick={setStoryUser} />} />
+          <Route path="/login" element={<Login setUser={setUser} />} />
+          <Route path="/register" element={<Register setUser={setUser} />} />
+          <Route path="/profile" element={<Profile user={user} setUser={setUser} />} />
+          <Route path="/shelf/:username" element={<ShelfView />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }

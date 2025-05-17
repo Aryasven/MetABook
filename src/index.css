@@ -3,12 +3,24 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  background: linear-gradient(to bottom right, #f5f3ff, #fce7f3);
+/* body {
+  background: linear-gradient(to bottom right, #f5f3ff1e, #fce7f325);
   color: #1f2937;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   min-height: 100vh;
+} */
+
+html {
+  color-scheme: dark;
 }
+
+body {
+  background: linear-gradient(to bottom right, #0f172a, #111827, #000000);
+  color: #f3f4f6; 
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
+}
+
 
 @keyframes fade-in {
   0% { opacity: 0; transform: translateY(20px); }

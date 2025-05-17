@@ -1,30 +1,20 @@
-
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import logo from "./assets/metabook_logo.png";
+import { BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
+
+const features = [
+  { icon: BookOpen, label: "What I’m Into" },
+  { icon: ArrowsLeftRight, label: "Wanna Swap?" },
+  { icon: Gift, label: "Take It, It’s Yours!" },
+  { icon: Megaphone, label: "You Gotta Read This" }
+];
 
 export default function Register({ setUser }) {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [searchResults, setSearchResults] = useState([]);
-  const [favorites, setFavorites] = useState([]);
   const navigate = useNavigate();
-
-  const handleSearch = async () => {
-    const res = await fetch(`https://www.googleapis.com/books/v1/volumes?q=\${searchTerm}&maxResults=6`);
-    const data = await res.json();
-    setSearchResults(data.items || []);
-  };
-
-  const toggleFavorite = (book) => {
-    const already = favorites.find((b) => b.id === book.id);
-    if (already) {
-      setFavorites(favorites.filter((b) => b.id !== book.id));
-    } else {
-      setFavorites([...favorites, book]);
-    }
-  };
 
   const handleRegister = () => {
     const users = JSON.parse(localStorage.getItem("users") || "[]");
@@ -36,7 +26,7 @@ export default function Register({ setUser }) {
       username,
       email,
       password,
-      favorites,
+      favorites: [],
       stories: [],
       books: []
     };
@@ -44,35 +34,57 @@ export default function Register({ setUser }) {
     localStorage.setItem("users", JSON.stringify(users));
     localStorage.setItem("loggedInUser", username);
     setUser(newUser);
-    navigate("/home");
+    navigate("/profile");
   };
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
-      <h2 className="text-2xl font-bold mb-2">Register</h2>
-      <input className="border p-2 w-full" placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} />
-      <input className="border p-2 w-full" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      <input className="border p-2 w-full" placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-
-      <div className="mt-6">
-        <h3 className="font-semibold mb-2">Select Your Favorite Books</h3>
-        <div className="flex gap-2 mb-2">
-          <input className="border p-2 flex-1" placeholder="Search books..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
-          <button onClick={handleSearch} className="bg-blue-500 text-white px-4 rounded">Search</button>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          {searchResults.map((book) => (
-            <div key={book.id} onClick={() => toggleFavorite(book)} className={`p-2 border rounded cursor-pointer hover:shadow \${favorites.find((b) => b.id === book.id) ? 'border-green-500' : ''}`}>
-              <p className="text-sm font-medium">{book.volumeInfo.title}</p>
-              {book.volumeInfo.imageLinks?.thumbnail && (
-                <img src={book.volumeInfo.imageLinks.thumbnail} alt="cover" className="w-16 mt-2" />
-              )}
-            </div>
-          ))}
-        </div>
+    <div className="relative min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex justify-center items-center px-4">
+      {/* floating features */}
+      <div className="absolute top-1/4 left-4 hidden md:flex flex-col gap-6 z-10">
+        {features.slice(0, 2).map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-2 text-sm text-purple-700">
+            <Icon className="h-6 w-6" /> {label}
+          </div>
+        ))}
+      </div>
+      <div className="absolute top-1/4 right-4 hidden md:flex flex-col gap-6 z-10">
+        {features.slice(2, 4).map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-2 text-sm text-purple-700">
+            <Icon className="h-6 w-6" /> {label}
+          </div>
+        ))}
       </div>
 
-      <button onClick={handleRegister} className="mt-6 bg-green-600 text-white px-4 py-2 rounded w-full">Create Account</button>
+      {/* form card */}
+      <div className="z-20 bg-white shadow-xl rounded-lg p-8 max-w-md w-full space-y-6">
+        <img src={logo} alt="logo" className="w-40 mx-auto" />
+        <input
+          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          placeholder="Username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <input
+          type="email"
+          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+        <input
+          type="password"
+          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <button
+          onClick={handleRegister}
+          className="w-full bg-purple-600 text-white py-3 rounded hover:bg-purple-700 transition"
+        >
+          Create Account
+        </button>
+      </div>
     </div>
   );
 }

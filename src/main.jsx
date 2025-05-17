@@ -4,6 +4,7 @@ import ReactDOM from 'react-dom/client'
 import App from './App'
 import './index.css' // Make sure this is imported before App
 
+
 // Apply styles to html and body elements
 document.documentElement.style.height = '100%';
 document.body.style.margin = '0';
