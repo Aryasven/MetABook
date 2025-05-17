@@ -1,21 +1,70 @@
-
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { motion } from "framer-motion";
+import {
+  BookOpen,
+  Eyeglasses,
+  ArrowsLeftRight,
+  Gift,
+  Megaphone
+} from "phosphor-react";
 import logo from "./assets/metabook_logo.png";
-import FloatingFeatures from "./FloatingFeatures";
+
+const features = [
+  { icon: BookOpen, label: "What I’m Into" },
+  { icon: Eyeglasses, label: "Peeking at Others" },
+  { icon: ArrowsLeftRight, label: "Wanna Swap?" },
+  { icon: Gift, label: "Take It, It’s Yours!" },
+  { icon: Megaphone, label: "You Gotta Read This" }
+];
 
 export default function WelcomePage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative h-screen w-full bg-gradient-to-br from-indigo-50 to-pink-100 flex flex-col items-center justify-center text-center px-4 overflow-hidden">
-      <FloatingFeatures />
-      <img src={logo} alt="MetaBook Logo" className="w-64 mb-4 animate-fade-in" />
-            <p className="text-xl text-gray-700 mb-4 animate-fade-in delay-300">the place for book-lovers.</p>
-      <p className="text-2xl text-purple-700 italic mb-8 animate-fade-in delay-500">Coming soon…</p>
-      <div className="flex gap-4 animate-fade-in delay-700">
-        <button onClick={() => navigate("/register")} className="px-6 py-2 bg-green-500 text-white rounded hover:bg-green-600">Register</button>
-        <button onClick={() => navigate("/login")} className="px-6 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Login</button>
+    <div className="relative min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 overflow-hidden flex flex-col items-center justify-center px-6">
+      {/* floating visuals */}
+      <div className="absolute inset-0 overflow-hidden z-0">
+        {[...Array(10)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute w-20 h-20 bg-purple-200 rounded-full opacity-20 animate-pulse blur-2xl"
+            style={{
+              top: `${Math.random() * 90}%`,
+              left: `${Math.random() * 90}%`,
+              animationDuration: `${6 + Math.random() * 6}s`
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="z-10 text-center space-y-6">
+        <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto" />
+        <p className="text-xl text-gray-700 italic">the place for book-lovers</p>
+
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-10">
+          {features.map(({ icon: Icon, label }) => (
+            <div key={label} className="flex flex-col items-center gap-2 bg-white shadow-md rounded-xl p-4">
+              <Icon size={40} weight="duotone" className="text-purple-600" />
+              <span className="text-sm font-medium">{label}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-8 flex gap-6 justify-center">
+          <button
+            onClick={() => navigate("/register")}
+            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 shadow"
+          >
+            Register
+          </button>
+          <button
+            onClick={() => navigate("/login")}
+            className="bg-white text-purple-600 px-6 py-2 rounded-lg border hover:bg-purple-100 shadow"
+          >
+            Login
+          </button>
+        </div>
       </div>
     </div>
   );

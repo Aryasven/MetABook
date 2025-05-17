@@ -4,7 +4,10 @@
 @tailwind utilities;
 
 body {
+  background: linear-gradient(to bottom right, #f5f3ff, #fce7f3);
+  color: #1f2937;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  min-height: 100vh;
 }
 
 @keyframes fade-in {

@@ -6,6 +6,7 @@ import Profile from "./Profile";
 import Navbar from "./Navbar";
 import Login from "./Login";
 import Register from "./Register";
+import "./index.css";
 
 const dummyUsers = [
   {
