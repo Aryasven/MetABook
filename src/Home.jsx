@@ -253,7 +253,7 @@ export default function Home({ users }) {
                 <div
                   key={user.username || user.uid}
                   onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                  className="min-w-[450px] max-w-[500px] rounded-xl shadow-lg p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                  className="w-[calc(100vw-3rem)] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Users size={18} className="text-purple-400" />
@@ -261,14 +261,16 @@ export default function Home({ users }) {
                   </div>
                   
                   {user.shelves && user.shelves.length > 0 ? (
-                    <div className="max-h-[550px] overflow-y-auto pr-2 hide-scrollbar">
-                      <div className="space-y-8">
+                    <div className="max-h-[350px] sm:max-h-[450px] md:max-h-[550px] overflow-y-auto pr-2 hide-scrollbar">
+                      <div className="space-y-6 md:space-y-8">
                         {user.shelves.map(shelf => (
-                          <Shelf
-                            key={shelf.id}
-                            books={shelf.books || []}
-                            title={shelf.name}
-                          />
+                          <div key={shelf.id} className="shelf-container">
+                            <h4 className="text-sm font-medium text-gray-300 mb-2">{shelf.name}</h4>
+                            <Shelf
+                              books={shelf.books || []}
+                              title={null} // We already show the title above
+                            />
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -294,6 +296,17 @@ export default function Home({ users }) {
           </div>
         </div>
       </div>
+      
+      {/* Mobile-specific styles */}
+      <style jsx>{`
+        @media (max-width: 640px) {
+          .shelf-container .relative {
+            transform: scale(0.85);
+            transform-origin: left top;
+            margin-bottom: -1rem;
+          }
+        }
+      `}</style>
       
       {/* CSS for hiding scrollbars but keeping functionality */}
       <style jsx>{`
