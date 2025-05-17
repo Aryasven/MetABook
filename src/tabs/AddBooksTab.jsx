@@ -173,11 +173,11 @@ export default function AddBooksTab() {
           <h3 className="text-xl font-semibold mb-2">📚 Want to Read</h3>
           <div className="flex flex-wrap">
             {wantToRead.map(book => (
-              <div key={book.id} className="w-40 p-2">
+              <div key={book.id} className="w-32 p-2">
                 <img
                   src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
                   alt={book.volumeInfo.title}
-                  className="w-full h-48 object-cover rounded"
+                  className="w-full h-36 object-cover rounded"
                 />
                 <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
                 <button onClick={() => moveBook(book, 'wantToRead', 'read')} className="mt-1 text-xs bg-green-100 px-2 py-1 rounded w-full">
@@ -193,11 +193,11 @@ export default function AddBooksTab() {
           <h3 className="text-xl font-semibold mb-2">✅ Read</h3>
           <div className="flex flex-wrap">
             {read.map(book => (
-              <div key={book.id} className="w-40 p-2">
+              <div key={book.id} className="w-32 p-2">
                 <img
                   src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
                   alt={book.volumeInfo.title}
-                  className="w-full h-48 object-cover rounded"
+                  className="w-full h-36 object-cover rounded"
                 />
                 <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
                 <button onClick={() => moveBook(book, 'read', 'wantToRead')} className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded w-full">

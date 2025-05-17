@@ -7,9 +7,9 @@ import { db } from "./firebase";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 
 const featureMap = [
-  { icon: BookOpen, label: "What I’m Into", color: "border-blue-400" },
+  { icon: BookOpen, label: "What I'm Into", color: "border-blue-400" },
   { icon: ArrowsLeftRight, label: "Wanna Swap?", color: "border-green-400" },
-  { icon: Gift, label: "Take It, It’s Yours!", color: "border-purple-400" },
+  { icon: Gift, label: "Take It, It's Yours!", color: "border-purple-400" },
   { icon: Megaphone, label: "You Gotta Read This", color: "border-pink-400" }
 ];
 
@@ -51,6 +51,9 @@ export default function Home({ users }) {
     const shuffled = [...shelves].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, count);
   }
+
+  // Filter users who have actually shared stories with text content
+  const usersWithStories = users.filter(user => user.stories?.[0]?.text);
 
   return (
     <div className="space-y-10">
@@ -102,25 +105,29 @@ export default function Home({ users }) {
       <div>
         <h2 className="text-xl font-bold mb-3">📢 What others are sharing</h2>
         <div className="flex space-x-4 overflow-x-auto pb-2">
-          {users.map(user => {
-            const story = user.stories?.[0];
-            const typeMatch = featureMap.find(f => f.label === story?.type);
-            const Icon = typeMatch?.icon || ChatCircleText;
-            const borderColor = typeMatch?.color || "border-gray-700";
-            return (
-              <div
-                key={user.username}
-                className={`min-w-[200px] max-w-xs rounded-xl shadow p-4 border ${borderColor} hover:shadow-md transition cursor-pointer`}
-                onClick={() => alert(story?.text)}
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <Icon className="h-5 w-5" />
-                  <span className="font-semibold text-sm">{user.name || user.username}</span>
+          {usersWithStories.length > 0 ? (
+            usersWithStories.map(user => {
+              const story = user.stories[0];
+              const typeMatch = featureMap.find(f => f.label === story.type);
+              const Icon = typeMatch?.icon || ChatCircleText;
+              const borderColor = typeMatch?.color || "border-gray-700";
+              return (
+                <div
+                  key={user.username}
+                  className={`min-w-[200px] max-w-xs rounded-xl shadow p-4 border ${borderColor} hover:shadow-md transition cursor-pointer`}
+                  onClick={() => alert(story.text)}
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="h-5 w-5" />
+                    <span className="font-semibold text-sm">{user.name || user.username}</span>
+                  </div>
+                  <p className="text-sm italic truncate">"{story.text}"</p>
                 </div>
-                <p className="text-sm italic truncate">“{story?.text}”</p>
-              </div>
-            );
-          })}
+              );
+            })
+          ) : (
+            <p className="text-gray-400 italic">No stories shared yet.</p>
+          )}
         </div>
       </div>
 
