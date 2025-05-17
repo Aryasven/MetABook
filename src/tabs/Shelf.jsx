@@ -24,22 +24,24 @@ const Shelf = ({ books, title }) => {
   }
 
   return (
-    <div className="space-y-8 w-fit">
-      {title && <h3 className="text-lg font-semibold text-left mb-1">{title}</h3>}
-      {rows.map((row, i) => (
-        <div key={i} className="relative h-40 w-full">
-          <img
-            src="/wood-texture.jpg"
-            alt="Wooden shelf"
-            className="absolute inset-0 w-full h-full object-cover z-0"
-          />
-          <div className="relative z-10 flex justify-start items-end gap-4 h-full px-6">
-            {row.map(book => (
-              <BookCard key={book.id} book={book} />
-            ))}
+    <div className="w-fit">
+      {title && <h3 className="text-lg font-semibold text-left mb-2">{title}</h3>}
+      <div className="space-y-4">
+        {rows.map((row, i) => (
+          <div key={i} className="relative h-40 w-full">
+            <img
+              src="/wood-texture.jpg"
+              alt="Wooden shelf"
+              className="absolute inset-0 w-full h-full object-cover z-0"
+            />
+            <div className="relative z-10 flex justify-start items-end gap-4 h-full px-6">
+              {row.map(book => (
+                <BookCard key={book.id} book={book} />
+              ))}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,7 @@ import {
   Megaphone
 } from "phosphor-react";
 import logo from "./assets/metabook_logo.png";
+import { useAuth } from "./useAuth";
 
 const features = [
   { icon: BookOpen, label: "What I’m Into" },
@@ -20,12 +21,7 @@ const features = [
 
 export default function WelcomePage() {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-  useEffect(() => {
-    const currentUser = localStorage.getItem("loggedInUser");
-    if (currentUser) setIsLoggedIn(true);
-  }, []);
+  const { currentUser } = useAuth();
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 overflow-hidden flex flex-col items-center justify-center px-6">
@@ -76,7 +72,7 @@ export default function WelcomePage() {
           >
             Login
           </button>
-          {isLoggedIn && (
+          {currentUser && (
             <button
               onClick={() => navigate("/tabs")}
               className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 shadow"

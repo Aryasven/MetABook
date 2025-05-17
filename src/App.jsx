@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import WelcomePage from "./WelcomePage";
 import Home from "./Home"
 import Navbar from "./Navbar";
@@ -10,89 +10,71 @@ import SidebarLayout from "./SidebarLayout";
 import AddBooks from "./tabs/AddBooksTab";
 import SeeMyShelf from "./tabs/SeeMyShelfTab";
 import UserStories from "./tabs/UserStoriesTab";
-import { AboutMe } from "./tabs/AboutMeTab";
-import { AddReviews} from "./tabs/AddReviewsTab";
+import AboutMe from "./tabs/AboutMeTab";
+import AddReviews from "./tabs/AddReviewsTab";
 import { UserShelves } from "./tabs/UserShelvesTab";
 import { Communities } from "./tabs/CommunitiesTab"
 import { Contribute } from "./Contribute";
-
-// // Placeholder pages
-// const Home = () => <div>Home</div>;
-// const AddReviews = () => <div>Add Reviews (Coming Soon)</div>;
-// const UserStories = () => <div>User Stories (Coming Soon)</div>;
-// const UserShelves = () => <div>User Shelves (Coming Soon)</div>;
-// const Communities = () => <div>Communities (Coming Soon)</div>;
-
+import { collection, getDocs } from "firebase/firestore";
+import { db } from "./firebase";
 import "./index.css";
-import { AuthProvider } from "./useAuth";
+import { AuthProvider, useAuth } from "./useAuth";
 
-const dummyUsers = [
-  {
-    username: "Aparna",
-    password: "123",
-    stories: [{ type: "review", text: "Loved The Alchemist!" }],
-    books: [
-      {
-        id: "1",
-        title: "The Alchemist",
-        thumbnail: "https://via.placeholder.com/80x100?text=Book"
-      }
-    ]
-  },
-  {
-    username: "Ramesh",
-    password: "456",
-    stories: [{ type: "swap", text: "Swapping Sapiens this week!" }],
-    books: [
-      {
-        id: "2",
-        title: "Sapiens",
-        thumbnail: "https://via.placeholder.com/80x100?text=Sapiens"
-      }
-    ]
+// ProtectedRoute component to handle authentication checks
+const ProtectedRoute = ({ children }) => {
+  const { currentUser } = useAuth();
+  
+  if (!currentUser) {
+    // Redirect to login if user is not authenticated
+    return <Navigate to="/login" />;
   }
-];
+  
+  return children;
+};
+
+// Removed dummy users as we're now using Firestore
 
 export default function App() {
-  const [user, setUser] = useState(null);
   const [users, setUsers] = useState([]);
-  const [storyUser, setStoryUser] = useState(null);
 
   useEffect(() => {
-    const stored = localStorage.getItem("users");
-    if (!stored) {
-      localStorage.setItem("users", JSON.stringify(dummyUsers));
-      setUsers(dummyUsers);
-    } else {
-      setUsers(JSON.parse(stored));
-    }
-
-    const currentUser = localStorage.getItem("loggedInUser");
-    if (currentUser) {
-      const found = JSON.parse(stored || "[]").find((u) => u.username === currentUser);
-      if (found) setUser(found);
-    }
+    // Fetch users from Firestore instead of localStorage
+    const fetchUsers = async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "users"));
+        const userData = snapshot.docs.map(doc => ({
+          uid: doc.id,
+          ...doc.data()
+        }));
+        setUsers(userData);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
+    
+    fetchUsers();
   }, []);
 
-  const logout = () => {
-    localStorage.removeItem("loggedInUser");
-    setUser(null);
-  };
+  // We'll define ProtectedRoute inside the AuthProvider context
 
   return (
     <AuthProvider>
       <Router>
-        <Navbar user={user} onLogout={logout} />
+        <Navbar />
         <Routes>
           <Route path="/" element={<WelcomePage />} />
-          <Route path="/login" element={<Login setUser={setUser} />} />
-          <Route path="/register" element={<Register setUser={setUser} />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
           <Route path="/shelf/:username" element={<ShelfView />} />
-          <Route path="/tabs" element={<SidebarLayout />}>
-            <Route index element={<Home user={user} users={users} setUser={setUser} />} />
-            <Route path="about-me" element={<AboutMe user={user} setUser={setUser} />} />
-            <Route path="add-books" element={<AddBooks user={user} setUser={setUser} />} />
-            <Route path="see-my-shelf" element={<SeeMyShelf user={user} setUser={setUser} />} />
+          <Route path="/tabs" element={
+            <ProtectedRoute>
+              <SidebarLayout />
+            </ProtectedRoute>
+          }>
+            <Route index element={<Home users={users} />} />
+            <Route path="about-me" element={<AboutMe />} />
+            <Route path="add-books" element={<AddBooks />} />
+            <Route path="see-my-shelf" element={<SeeMyShelf />} />
             <Route path="add-reviews" element={<AddReviews />} />
             <Route path="stories" element={<UserStories />} />
             <Route path="shelves" element={<UserShelves />} />

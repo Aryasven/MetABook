@@ -3,10 +3,11 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/metabook_logo.png";
 import { doc, getDoc } from "firebase/firestore";
+import { getAuth, signOut } from "firebase/auth";
 import { db } from "./firebase";
 import { useAuth } from "./useAuth";
 
-export default function Navbar({ user, onLogout }) {
+export default function Navbar() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
   const [profile, setProfile] = useState(null);
@@ -30,7 +31,7 @@ export default function Navbar({ user, onLogout }) {
 
       {profile && (
         <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-300">Hi, {profile.displayName || user?.username}</span>
+          <span className="text-sm text-gray-300">Hi, {profile.displayName || currentUser?.displayName}</span>
           {profile.userImage && (
             <img
               src={profile.userImage}
@@ -39,7 +40,12 @@ export default function Navbar({ user, onLogout }) {
             />
           )}
           <button
-            onClick={onLogout}
+            onClick={() => {
+              const auth = getAuth();
+              signOut(auth).then(() => {
+                navigate('/');
+              });
+            }}
             className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700"
           >
             Logout

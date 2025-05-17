@@ -3,7 +3,7 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatCircleText, BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
 import Shelf from "./tabs/Shelf";
-import { db } from "../firebase";
+import { db } from "./firebase";
 import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 
 const featureMap = [
@@ -13,25 +13,19 @@ const featureMap = [
   { icon: Megaphone, label: "You Gotta Read This", color: "border-pink-400" }
 ];
 
-export default function Home() {
-  const [users, setUsers] = useState([]);
+export default function Home({ users }) {
   const [showStoryInput, setShowStoryInput] = useState(null);
   const [storyText, setStoryText] = useState("");
   const [currentUser, setCurrentUser] = useState(null);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      const snapshot = await getDocs(collection(db, "users"));
-      const data = snapshot.docs.map(doc => ({ username: doc.id, ...doc.data() }));
-      setUsers(data);
-
-      const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
-      const userMatch = data.find(u => u.username === loggedInUser);
+    const loggedInUser = localStorage.getItem("loggedInUser");
+    if (loggedInUser) {
+      const userMatch = users.find(u => u.username === loggedInUser);
       if (userMatch) setCurrentUser(userMatch);
-    };
-    fetchUsers();
-  }, []);
+    }
+  }, [users]);
 
   const handlePostStory = async () => {
     if (!currentUser || !showStoryInput) return;
@@ -39,11 +33,15 @@ export default function Home() {
     const userRef = doc(db, "users", currentUser.username);
     await updateDoc(userRef, { stories: [story] });
 
-    setUsers(prev =>
-      prev.map(u =>
-        u.username === currentUser.username ? { ...u, stories: [story] } : u
-      )
+    // Update localStorage
+    const updated = { ...currentUser };
+    updated.stories = [story];
+    localStorage.setItem("loggedInUser", updated.username);
+    const usersList = JSON.parse(localStorage.getItem("users") || "[]").map(u =>
+      u.username === updated.username ? updated : u
     );
+    localStorage.setItem("users", JSON.stringify(usersList));
+    
     setShowStoryInput(null);
     setStoryText("");
   };
@@ -133,16 +131,19 @@ export default function Home() {
           {users.map(user => (
             <div
               key={user.username}
-              onClick={() => navigate(`/shelf/${user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
+              onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
               className="min-w-[300px] rounded-xl shadow-lg p-4 bg-gray-900 hover:shadow-xl transition cursor-pointer text-white"
             >
-              {getRandomShelfSubset(user.shelves, 2).map(shelf => (
-                <Shelf
-                  key={shelf.id}
-                  books={shelf.books}
-                  title={`${user.name || user.username}'s ${shelf.name}`}
-                />
-              ))}
+              {user.shelves && user.shelves.length > 0 ? 
+                getRandomShelfSubset(user.shelves, 2).map(shelf => (
+                  <Shelf
+                    key={shelf.id}
+                    books={shelf.books || []}
+                    title={`${user.name || user.username}'s ${shelf.name}`}
+                  />
+                )) : 
+                <p className="text-gray-400 italic">No shelves available</p>
+              }
             </div>
           ))}
         </div>
