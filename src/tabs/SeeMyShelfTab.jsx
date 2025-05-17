@@ -1,4 +1,3 @@
-// SeeMyShelf.jsx
 import React, { useState, useEffect } from 'react';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -10,15 +9,21 @@ const SeeMyShelf = () => {
   const [shelves, setShelves] = useState([]);
 
   useEffect(() => {
+    if (!currentUser) return;
+
     const fetchShelves = async () => {
-      if (!currentUser) return;
-      const userRef = doc(db, 'users', currentUser.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        setShelves(data.shelves || []);
+      try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setShelves(data.shelves || []);
+        }
+      } catch (err) {
+        console.error('Failed to load shelves:', err);
       }
     };
+
     fetchShelves();
   }, [currentUser]);
 
@@ -35,7 +40,7 @@ const SeeMyShelf = () => {
     const newShelf = {
       id: `shelf-${Date.now()}`,
       name,
-      books: []
+      books: [],
     };
     const updated = [...shelves, newShelf];
     await saveShelves(updated);
@@ -52,23 +57,32 @@ const SeeMyShelf = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-bold">📚 My Shelves</h2>
-        <button onClick={addShelf} className="bg-indigo-500 text-white px-4 py-2 rounded">
+        <button
+          onClick={addShelf}
+          className="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded shadow"
+        >
           ➕ Add Shelf
         </button>
       </div>
 
-      <div className="space-y-10">
-        {shelves.map(shelf => (
-          <div key={shelf.id} className="bg-gray-50 p-4 rounded-xl shadow">
-            <h3 className="text-xl font-semibold mb-4">📁 {shelf.name}</h3>
-            <Shelf
-              shelfId={shelf.id}
-              books={shelf.books}
-              updateBooks={(updated) => updateShelfBooks(shelf.id, updated)}
-            />
-          </div>
-        ))}
-      </div>
+      {shelves.length === 0 ? (
+        <div className="text-gray-500 italic">
+          No shelves created yet. Click "Add Shelf" to get started!
+        </div>
+      ) : (
+        <div className="space-y-10">
+          {shelves.map(shelf => (
+            <div key={shelf.id} className="bg-white p-4 rounded-xl shadow-md">
+              <h3 className="text-xl font-semibold mb-4">📁 {shelf.name}</h3>
+              <Shelf
+                shelfId={shelf.id}
+                books={shelf.books}
+                updateBooks={(updated) => updateShelfBooks(shelf.id, updated)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

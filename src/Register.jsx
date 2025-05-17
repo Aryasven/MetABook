@@ -26,11 +26,14 @@ export default function Register() {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(result.user, { displayName: username });
       await setDoc(doc(db, "users", result.user.uid), {
-        displayName: username,
+        username,
         email: result.user.email,
+        name: "", // to be updated in About Me
         books: [],
-        stories: []
+        stories: [],
+        shelves: []
       });
+
       navigate("/tabs/about-me");
     } catch (error) {
       alert(error.message);

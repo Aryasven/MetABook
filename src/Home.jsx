@@ -1,12 +1,10 @@
-// Home.jsx (routed version)
+// Home.jsx
 import React, { useState, useEffect } from "react";
-import bookshelfImg from "./assets/bookshelf.png";
-// Replace heroicons with phosphor-react equivalent
-import { ChatCircleText, BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
 import { useNavigate } from "react-router-dom";
-
-const ShelfY = [132, 275, 414, 556];
-const shelfLefts = [20, 130, 240];
+import { ChatCircleText, BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
+import Shelf from "./tabs/Shelf";
+import { db } from "../firebase";
+import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
 
 const featureMap = [
   { icon: BookOpen, label: "What I’m Into", color: "border-blue-400" },
@@ -15,31 +13,50 @@ const featureMap = [
   { icon: Megaphone, label: "You Gotta Read This", color: "border-pink-400" }
 ];
 
-export default function Home({ user, users, setUser }) {
-  // Add safety checks for props
-  const safeUsers = users || [];
-  const safeUser = user || {};
+export default function Home() {
+  const [users, setUsers] = useState([]);
   const [showStoryInput, setShowStoryInput] = useState(null);
   const [storyText, setStoryText] = useState("");
+  const [currentUser, setCurrentUser] = useState(null);
+  const navigate = useNavigate();
 
-  const handlePostStory = () => {
-    const updated = { ...user };
-    updated.stories = [{ type: showStoryInput.label, text: storyText }];
-    localStorage.setItem("loggedInUser", updated.username);
-    const usersList = JSON.parse(localStorage.getItem("users") || "[]").map(u =>
-      u.username === updated.username ? updated : u
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const snapshot = await getDocs(collection(db, "users"));
+      const data = snapshot.docs.map(doc => ({ username: doc.id, ...doc.data() }));
+      setUsers(data);
+
+      const loggedInUser = JSON.parse(localStorage.getItem("loggedInUser"));
+      const userMatch = data.find(u => u.username === loggedInUser);
+      if (userMatch) setCurrentUser(userMatch);
+    };
+    fetchUsers();
+  }, []);
+
+  const handlePostStory = async () => {
+    if (!currentUser || !showStoryInput) return;
+    const story = { type: showStoryInput.label, text: storyText };
+    const userRef = doc(db, "users", currentUser.username);
+    await updateDoc(userRef, { stories: [story] });
+
+    setUsers(prev =>
+      prev.map(u =>
+        u.username === currentUser.username ? { ...u, stories: [story] } : u
+      )
     );
-    localStorage.setItem("users", JSON.stringify(usersList));
-    setUser(updated);
     setShowStoryInput(null);
     setStoryText("");
   };
 
-  const navigate = useNavigate();
+  function getRandomShelfSubset(shelves, count = 2) {
+    if (!shelves || shelves.length === 0) return [];
+    const shuffled = [...shelves].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, count);
+  }
 
   return (
     <div className="space-y-10">
-      {/* Feature Cards Row */}
+      {/* Feature Cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         {featureMap.map(feature => (
           <button
@@ -83,6 +100,7 @@ export default function Home({ user, users, setUser }) {
         </div>
       )}
 
+      {/* User Stories */}
       <div>
         <h2 className="text-xl font-bold mb-3">📢 What others are sharing</h2>
         <div className="flex space-x-4 overflow-x-auto pb-2">
@@ -99,7 +117,7 @@ export default function Home({ user, users, setUser }) {
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className="h-5 w-5" />
-                  <span className="font-semibold text-sm">{user.username}</span>
+                  <span className="font-semibold text-sm">{user.name || user.username}</span>
                 </div>
                 <p className="text-sm italic truncate">“{story?.text}”</p>
               </div>
@@ -108,37 +126,23 @@ export default function Home({ user, users, setUser }) {
         </div>
       </div>
 
+      {/* User Shelves */}
       <div>
         <h2 className="text-xl font-bold mb-3">📚 Bookshelves</h2>
         <div className="flex space-x-6 overflow-x-auto pb-4">
           {users.map(user => (
             <div
               key={user.username}
-              onClick={() => navigate(`/shelf/${user.username}`)}
-              className="rounded-xl shadow-lg p-4 bg-gray-900 hover:shadow-xl transition cursor-pointer text-white"
+              onClick={() => navigate(`/shelf/${user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
+              className="min-w-[300px] rounded-xl shadow-lg p-4 bg-gray-900 hover:shadow-xl transition cursor-pointer text-white"
             >
-              <h3 className="text-center font-semibold text-lg mb-2">{user.username}'s Shelf</h3>
-              <div className="relative w-[400px] h-[600px] mx-auto bg-cover rounded" style={{ backgroundImage: `url(${bookshelfImg})` }}>
-                {user.books.map((book, idx) => {
-                  const shelf = Math.floor(idx / 3) % ShelfY.length;
-                  const posX = shelfLefts[idx % 3];
-                  return (
-                    <img
-                      key={book.id}
-                      src={book.thumbnail}
-                      alt={book.title}
-                      className="absolute hover:scale-110 transition"
-                      title={book.title}
-                      style={{
-                        top: ShelfY[shelf] - 100,
-                        left: posX,
-                        width: "80px",
-                        height: "100px"
-                      }}
-                    />
-                  );
-                })}
-              </div>
+              {getRandomShelfSubset(user.shelves, 2).map(shelf => (
+                <Shelf
+                  key={shelf.id}
+                  books={shelf.books}
+                  title={`${user.name || user.username}'s ${shelf.name}`}
+                />
+              ))}
             </div>
           ))}
         </div>

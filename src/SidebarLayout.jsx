@@ -7,20 +7,27 @@ const tabGroups = [
     label: "Explore",
     items: [
       { label: "Home", path: "/tabs" },
-      { label: "Stories", path: "/tabs/stories" },
-      { label: "Shelves", path: "/tabs/shelves" },
+    //   { label: "Stories", path: "/tabs/stories" },
+    //   { label: "Shelves", path: "/tabs/shelves" },
       { label: "Communities", path: "/tabs/communities" },
-      { label: "Support & Contribute", path: "/tabs/contribute" }
+    //   { label: "Support & Contribute", path: "/tabs/contribute" }
 
     ]
   },
   {
-    label: "My Library",
+    label: "My Profile",
     items: [
     { label: "About Me", path: "/tabs/about-me" },
-      { label: "Add Books", path: "/tabs/add-books" },
-      { label: "My Shelf", path: "/tabs/see-my-shelf"},
+      { label: "My Library", path: "/tabs/add-books" },
+    //   { label: "My Shelf", path: "/tabs/see-my-shelf"},
       { label: "Add Reviews", path: "/tabs/add-reviews" }
+
+    ]
+  },
+    {
+    label: "Developer's Desk",
+    items: [
+      { label: "Support & Contribute", path: "/tabs/contribute" }
 
     ]
   }

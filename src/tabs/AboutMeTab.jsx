@@ -1,10 +1,10 @@
-// AboutMeTab.jsx
-import { useState, useEffect } from "react";
-import { db } from "../firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+// AboutMe.jsx
+import React, { useEffect, useState } from "react";
 import { useAuth } from "../useAuth";
+import { doc, getDoc, setDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
-export function AboutMe() {
+export default function AboutMe() {
   const { currentUser } = useAuth();
   const [name, setName] = useState("");
   const [photoURL, setPhotoURL] = useState("");
@@ -17,7 +17,7 @@ export function AboutMe() {
       const snap = await getDoc(userRef);
       if (snap.exists()) {
         const data = snap.data();
-        setName(data.displayName || "");
+        setName(data.name || "");
         setPhotoURL(data.userImage || "");
         setBio(data.bio || "");
       }
@@ -25,12 +25,11 @@ export function AboutMe() {
     fetchProfile();
   }, [currentUser]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSave = async () => {
     if (!currentUser) return;
     const userRef = doc(db, "users", currentUser.uid);
     await setDoc(userRef, {
-      displayName: name,
+      name,
       userImage: photoURL,
       bio
     }, { merge: true });
@@ -40,7 +39,7 @@ export function AboutMe() {
   return (
     <div className="p-6 max-w-xl mx-auto text-white">
       <h1 className="text-3xl font-bold mb-6">👤 About Me</h1>
-      <form className="space-y-4" onSubmit={handleSubmit}>
+      <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
         <div>
           <label className="block mb-1 text-sm font-medium">Display Name</label>
           <input
