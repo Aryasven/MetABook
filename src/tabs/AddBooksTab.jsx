@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../useAuth';
 import Shelf from './Shelf';
+import { MagnifyingGlass, BookOpen, BookmarkSimple, Books, Plus, ArrowRight } from 'phosphor-react';
 
 export default function AddBooksTab() {
   const { currentUser } = useAuth();
@@ -13,20 +14,30 @@ export default function AddBooksTab() {
   const [wantToRead, setWantToRead] = useState([]);
   const [read, setRead] = useState([]);
   const [shelves, setShelves] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState('search');
 
   const searchRef = useRef(null);
   const shelvesRef = useRef(null);
+  const searchInputRef = useRef(null);
 
   useEffect(() => {
     if (!currentUser) return;
     const fetchBooksAndShelves = async () => {
-      const userRef = doc(db, 'users', currentUser.uid);
-      const snap = await getDoc(userRef);
-      if (snap.exists()) {
-        const data = snap.data();
-        setWantToRead(data.books?.wantToRead || []);
-        setRead(data.books?.read || []);
-        setShelves(data.shelves || []);
+      setLoading(true);
+      try {
+        const userRef = doc(db, 'users', currentUser.uid);
+        const snap = await getDoc(userRef);
+        if (snap.exists()) {
+          const data = snap.data();
+          setWantToRead(data.books?.wantToRead || []);
+          setRead(data.books?.read || []);
+          setShelves(data.shelves || []);
+        }
+      } catch (err) {
+        console.error("Error fetching books:", err);
+      } finally {
+        setLoading(false);
       }
     };
     fetchBooksAndShelves();
@@ -34,89 +45,157 @@ export default function AddBooksTab() {
 
   const saveBooks = async (updatedWantToRead, updatedRead) => {
     if (!currentUser) return;
-    const userRef = doc(db, 'users', currentUser.uid);
-    await setDoc(userRef, {
-      books: { wantToRead: updatedWantToRead, read: updatedRead }
-    }, { merge: true });
+    setLoading(true);
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      await setDoc(userRef, {
+        books: { wantToRead: updatedWantToRead, read: updatedRead }
+      }, { merge: true });
+    } catch (err) {
+      console.error("Error saving books:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const saveShelves = async (updatedShelves) => {
     if (!currentUser) return;
-    const userRef = doc(db, 'users', currentUser.uid);
-    setShelves(updatedShelves);
-    await setDoc(userRef, { shelves: updatedShelves }, { merge: true });
+    setLoading(true);
+    try {
+      const userRef = doc(db, 'users', currentUser.uid);
+      setShelves(updatedShelves);
+      await setDoc(userRef, { shelves: updatedShelves }, { merge: true });
+    } catch (err) {
+      console.error("Error saving shelves:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const searchBooks = async () => {
-    if (!query) return;
-    const res = await axios.get(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}`);
-    setResults(res.data.items || []);
+  const searchBooks = async (e) => {
+    e?.preventDefault();
+    if (!query.trim()) return;
+    
+    setLoading(true);
+    try {
+      const res = await axios.get(`https://www.googleapis.com/books/v1/volumes?q=${encodeURIComponent(query)}&maxResults=20`);
+      setResults(res.data.items || []);
+    } catch (err) {
+      console.error("Error searching books:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyPress = (e) => {
+    if (e.key === 'Enter') {
+      searchBooks();
+    }
   };
 
   const addBook = async (book, category) => {
     const exists = [...wantToRead, ...read].some(b => b.id === book.id);
     if (exists) return;
-    if (category === 'read') {
-      const updated = [...read, book];
-      setRead(updated);
-      await saveBooks(wantToRead, updated);
-    } else {
-      const updated = [...wantToRead, book];
-      setWantToRead(updated);
-      await saveBooks(updated, read);
+    
+    setLoading(true);
+    try {
+      if (category === 'read') {
+        const updated = [...read, book];
+        setRead(updated);
+        await saveBooks(wantToRead, updated);
+      } else {
+        const updated = [...wantToRead, book];
+        setWantToRead(updated);
+        await saveBooks(updated, read);
+      }
+    } catch (err) {
+      console.error("Error adding book:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const moveBook = async (book, from, to) => {
-    let updatedWant = wantToRead, updatedRead = read;
-    if (from === 'read') {
-      updatedRead = read.filter(b => b.id !== book.id);
-      updatedWant = [...wantToRead, book];
-    } else {
-      updatedWant = wantToRead.filter(b => b.id !== book.id);
-      updatedRead = [...read, book];
+    setLoading(true);
+    try {
+      let updatedWant = wantToRead, updatedRead = read;
+      if (from === 'read') {
+        updatedRead = read.filter(b => b.id !== book.id);
+        updatedWant = [...wantToRead, book];
+      } else {
+        updatedWant = wantToRead.filter(b => b.id !== book.id);
+        updatedRead = [...read, book];
+      }
+      setWantToRead(updatedWant);
+      setRead(updatedRead);
+      await saveBooks(updatedWant, updatedRead);
+    } catch (err) {
+      console.error("Error moving book:", err);
+    } finally {
+      setLoading(false);
     }
-    setWantToRead(updatedWant);
-    setRead(updatedRead);
-    await saveBooks(updatedWant, updatedRead);
   };
 
   const addShelf = async () => {
     if (!currentUser) return;
+    
+    // Use a more modern approach instead of prompt
     const name = prompt('Enter a name for your new shelf:');
     if (!name) return;
-    const newShelf = { id: `shelf-${Date.now()}`, name, books: [] };
-    const updated = [...shelves, newShelf];
-    await saveShelves(updated);
-    setTimeout(() => shelvesRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    
+    setLoading(true);
+    try {
+      const newShelf = { id: `shelf-${Date.now()}`, name, books: [] };
+      const updated = [...shelves, newShelf];
+      await saveShelves(updated);
+      setTimeout(() => shelvesRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+    } catch (err) {
+      console.error("Error adding shelf:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addToShelfDropdown = (book) => {
-    const handleSelect = async (shelfId) => {
+    const handleSelect = async (e) => {
+      const shelfId = e.target.value;
+      if (!shelfId) return;
+      
       const bookAlreadyExists = shelves.some(shelf =>
         shelf.books.some(b => b.id === book.id)
       );
-      if (bookAlreadyExists) return;
+      
+      if (bookAlreadyExists) {
+        alert("This book is already on one of your shelves.");
+        e.target.value = "";
+        return;
+      }
 
-      const updated = shelves.map(shelf => {
-        if (shelf.id === shelfId) {
-          const newBooks = [...shelf.books, book];
-          return { ...shelf, books: newBooks };
-        }
-        return shelf;
-      });
-      setShelves(updated);
-      await saveShelves(updated);
-      setQuery('');
-      setResults([]);
-      shelvesRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setLoading(true);
+      try {
+        const updated = shelves.map(shelf => {
+          if (shelf.id === shelfId) {
+            const newBooks = [...shelf.books, book];
+            return { ...shelf, books: newBooks };
+          }
+          return shelf;
+        });
+        
+        setShelves(updated);
+        await saveShelves(updated);
+        e.target.value = "";
+      } catch (err) {
+        console.error("Error adding to shelf:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     return (
-      <div className="relative">
+      <div className="relative w-full">
         <select
-          className="text-xs mt-1 bg-purple-100 px-2 py-1 rounded"
-          onChange={(e) => handleSelect(e.target.value)}
+          className="w-full text-xs mt-1 bg-gray-800 text-white border border-gray-700 px-2 py-1 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+          onChange={handleSelect}
           defaultValue=""
         >
           <option value="" disabled>Add to Shelf</option>
@@ -128,126 +207,306 @@ export default function AddBooksTab() {
     );
   };
 
-  return (
-    <div className="p-6">
-      <div ref={searchRef}>
-        <h2 className="text-2xl font-bold mb-4">Add Books</h2>
-        <div className="flex gap-2">
-          <input
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder="Search for books..."
-            className="p-2 border rounded w-full"
+  const renderBookCard = (book, section) => {
+    const isSearchResult = section === 'search';
+    
+    return (
+      <div key={book.id} className={`${isSearchResult ? 'w-40' : 'w-32'} p-2 bg-gray-800 rounded-lg border border-gray-700 hover:border-purple-500 transition-all`}>
+        <div className="relative group">
+          <img
+            src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
+            alt={book.volumeInfo.title}
+            className={`w-full ${isSearchResult ? 'h-48' : 'h-36'} object-cover rounded-md shadow-md`}
           />
-          <button onClick={searchBooks} className="bg-indigo-500 text-white px-4 py-2 rounded">
-            Search
-          </button>
-        </div>
-
-        {results.length > 0 && (
-          <div className="mt-6">
-            <h3 className="font-semibold mb-2">Suggestions</h3>
-            <div className="flex flex-wrap">
-              {results.map(book => (
-                <div key={book.id} className="w-40 p-2">
-                  <img
-                    src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
-                    alt={book.volumeInfo.title}
-                    className="w-full h-48 object-cover rounded"
-                  />
-                  <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
-                  <button onClick={() => addBook(book, 'wantToRead')} className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded w-full">
-                    Add to Want to Read
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 transition-all rounded-md flex items-center justify-center">
+            <div className="opacity-0 group-hover:opacity-100 transition-all">
+              {section === 'search' && (
+                <div className="flex flex-col gap-1">
+                  <button 
+                    onClick={() => addBook(book, 'wantToRead')} 
+                    className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-md transition-colors"
+                  >
+                    Want to Read
                   </button>
-                  <button onClick={() => addBook(book, 'read')} className="mt-1 text-xs bg-green-100 px-2 py-1 rounded w-full">
+                  <button 
+                    onClick={() => addBook(book, 'read')} 
+                    className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
+                  >
                     Mark as Read
                   </button>
-                  {addToShelfDropdown(book)}
+                </div>
+              )}
+              {section === 'wantToRead' && (
+                <button 
+                  onClick={() => moveBook(book, 'wantToRead', 'read')} 
+                  className="text-xs bg-green-600 hover:bg-green-700 text-white px-2 py-1 rounded-md transition-colors"
+                >
+                  Mark as Read
+                </button>
+              )}
+              {section === 'read' && (
+                <button 
+                  onClick={() => moveBook(book, 'read', 'wantToRead')} 
+                  className="text-xs bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded-md transition-colors"
+                >
+                  Want to Read
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+        <div className="mt-2 line-clamp-2 text-sm font-medium text-gray-200">{book.volumeInfo.title}</div>
+        <div className="mt-1 text-xs text-gray-400 line-clamp-1">{book.volumeInfo.authors?.join(', ')}</div>
+        {addToShelfDropdown(book)}
+      </div>
+    );
+  };
+
+  const tabs = [
+    { id: 'search', label: 'Search', icon: MagnifyingGlass },
+    { id: 'wantToRead', label: 'Want to Read', icon: BookmarkSimple, count: wantToRead.length },
+    { id: 'read', label: 'Read', icon: BookOpen, count: read.length },
+    { id: 'shelves', label: 'My Shelves', icon: Books, count: shelves.length }
+  ];
+
+  return (
+    <div className="p-6 text-white max-w-6xl mx-auto">
+      <div className="flex items-center gap-3 mb-8">
+        <div className="bg-purple-600 p-3 rounded-full">
+          <Books size={24} weight="bold" />
+        </div>
+        <h1 className="text-2xl font-bold">My Library</h1>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex flex-wrap border-b border-gray-700 mb-6">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => {
+              setActiveTab(tab.id);
+              if (tab.id === 'search' && searchInputRef.current) {
+                setTimeout(() => searchInputRef.current.focus(), 100);
+              }
+              if (tab.id === 'shelves' && shelvesRef.current) {
+                setTimeout(() => shelvesRef.current.scrollIntoView({ behavior: 'smooth' }), 100);
+              }
+            }}
+            className={`flex items-center gap-2 px-4 py-3 border-b-2 transition-colors ${
+              activeTab === tab.id 
+                ? 'border-purple-500 text-purple-400' 
+                : 'border-transparent text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            <tab.icon size={18} />
+            <span>{tab.label}</span>
+            {tab.count > 0 && (
+              <span className="bg-gray-800 text-xs px-2 py-0.5 rounded-full">{tab.count}</span>
+            )}
+          </button>
+        ))}
+      </div>
+
+      {/* Loading Indicator */}
+      {loading && (
+        <div className="fixed top-4 right-4 z-50">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-purple-500"></div>
+        </div>
+      )}
+
+      {/* Search Section */}
+      {activeTab === 'search' && (
+        <div ref={searchRef}>
+          <form onSubmit={searchBooks} className="relative mb-8">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <MagnifyingGlass size={20} className="text-gray-400" />
+            </div>
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Search for books by title, author, or ISBN..."
+              className="w-full pl-10 p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+            />
+            <button 
+              type="submit"
+              className="absolute right-2 top-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-1 rounded-md transition-colors"
+            >
+              Search
+            </button>
+          </form>
+
+          {results.length > 0 && (
+            <div className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+              <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                <MagnifyingGlass size={20} className="text-purple-400" />
+                Search Results
+              </h3>
+              <div className="flex flex-wrap gap-4">
+                {results.map(book => renderBookCard(book, 'search'))}
+              </div>
+            </div>
+          )}
+
+          {query && results.length === 0 && !loading && (
+            <div className="text-center py-8 text-gray-400">
+              No books found matching your search. Try different keywords.
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Want to Read Section */}
+      {activeTab === 'wantToRead' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <BookmarkSimple size={20} className="text-purple-400" />
+              Want to Read
+            </h3>
+            <button
+              onClick={() => {
+                setActiveTab('search');
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+              className="text-sm flex items-center gap-1 text-purple-400 hover:text-purple-300"
+            >
+              <Plus size={16} />
+              Add Books
+            </button>
+          </div>
+          
+          {wantToRead.length > 0 ? (
+            <div className="flex flex-wrap gap-4">
+              {wantToRead.map(book => renderBookCard(book, 'wantToRead'))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-800 rounded-lg border border-gray-700">
+              <BookmarkSimple size={40} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-gray-400">Your "Want to Read" list is empty.</p>
+              <button
+                onClick={() => {
+                  setActiveTab('search');
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }}
+                className="mt-2 text-purple-400 hover:text-purple-300 flex items-center gap-1 mx-auto"
+              >
+                <Plus size={16} />
+                Add Books
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Read Section */}
+      {activeTab === 'read' && (
+        <div>
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-xl font-semibold flex items-center gap-2">
+              <BookOpen size={20} className="text-green-400" />
+              Read
+            </h3>
+            <button
+              onClick={() => {
+                setActiveTab('search');
+                setTimeout(() => searchInputRef.current?.focus(), 100);
+              }}
+              className="text-sm flex items-center gap-1 text-purple-400 hover:text-purple-300"
+            >
+              <Plus size={16} />
+              Add Books
+            </button>
+          </div>
+          
+          {read.length > 0 ? (
+            <div className="flex flex-wrap gap-4">
+              {read.map(book => renderBookCard(book, 'read'))}
+            </div>
+          ) : (
+            <div className="text-center py-8 bg-gray-800 rounded-lg border border-gray-700">
+              <BookOpen size={40} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-gray-400">Your "Read" list is empty.</p>
+              <button
+                onClick={() => {
+                  setActiveTab('search');
+                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                }}
+                className="mt-2 text-purple-400 hover:text-purple-300 flex items-center gap-1 mx-auto"
+              >
+                <Plus size={16} />
+                Add Books
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Shelves Section */}
+      {activeTab === 'shelves' && (
+        <div ref={shelvesRef}>
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-semibold flex items-center gap-2">
+              <Books size={20} className="text-purple-400" />
+              My Shelves
+            </h2>
+            <button
+              onClick={addShelf}
+              className="flex items-center gap-1 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white px-4 py-2 rounded-lg shadow transition-all"
+            >
+              <Plus size={18} weight="bold" />
+              Add Shelf
+            </button>
+          </div>
+          
+          {shelves.length > 0 ? (
+            <div className="space-y-10">
+              {shelves.map(shelf => (
+                <div key={shelf.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">{shelf.name}</h3>
+                    <button
+                      onClick={() => {
+                        setActiveTab('search');
+                        setTimeout(() => searchInputRef.current?.focus(), 100);
+                      }}
+                      className="text-xs flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
+                    >
+                      <Plus size={14} />
+                      Add Book
+                    </button>
+                  </div>
+                  <Shelf
+                    books={shelf.books || []}
+                    title={null} // We already show the title above
+                    updateBooks={(updated) => {
+                      const updatedShelves = shelves.map(s =>
+                        s.id === shelf.id ? { ...s, books: updated } : s
+                      );
+                      setShelves(updatedShelves);
+                      saveShelves(updatedShelves);
+                    }}
+                  />
                 </div>
               ))}
             </div>
-          </div>
-        )}
-
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-2">📚 Want to Read</h3>
-          <div className="flex flex-wrap">
-            {wantToRead.map(book => (
-              <div key={book.id} className="w-32 p-2">
-                <img
-                  src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
-                  alt={book.volumeInfo.title}
-                  className="w-full h-36 object-cover rounded"
-                />
-                <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
-                <button onClick={() => moveBook(book, 'wantToRead', 'read')} className="mt-1 text-xs bg-green-100 px-2 py-1 rounded w-full">
-                  Mark as Read
-                </button>
-                {addToShelfDropdown(book)}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="mt-8">
-          <h3 className="text-xl font-semibold mb-2">✅ Read</h3>
-          <div className="flex flex-wrap">
-            {read.map(book => (
-              <div key={book.id} className="w-32 p-2">
-                <img
-                  src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
-                  alt={book.volumeInfo.title}
-                  className="w-full h-36 object-cover rounded"
-                />
-                <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
-                <button onClick={() => moveBook(book, 'read', 'wantToRead')} className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded w-full">
-                  Move to Want to Read
-                </button>
-                {addToShelfDropdown(book)}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Shelves Section */}
-      <div ref={shelvesRef} className="mt-16">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">My Shelves</h2>
-          <button
-            onClick={addShelf}
-            className="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded shadow"
-          >
-            ➕ Add Shelf
-          </button>
-        </div>
-        <div className="space-y-10">
-          {shelves.map(shelf => (
-            <div key={shelf.id}>
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xl font-semibold"> {shelf.name}</h3>
-                <button
-                  onClick={() => searchRef.current?.scrollIntoView({ behavior: 'smooth' })}
-                  className="text-xs bg-indigo-100 hover:bg-indigo-200 px-3 py-1 rounded"
-                >
-                  ➕ Add Book
-                </button>
-              </div>
-              <Shelf
-                shelfId={shelf.id}
-                books={shelf.books}
-                updateBooks={(updated) => {
-                  const updatedShelves = shelves.map(s =>
-                    s.id === shelf.id ? { ...s, books: updated } : s
-                  );
-                  setShelves(updatedShelves);
-                  saveShelves(updatedShelves);
-                }}
-              />
+          ) : (
+            <div className="text-center py-8 bg-gray-800 rounded-lg border border-gray-700">
+              <Books size={40} className="mx-auto text-gray-600 mb-2" />
+              <p className="text-gray-400">You haven't created any shelves yet.</p>
+              <button
+                onClick={addShelf}
+                className="mt-2 text-purple-400 hover:text-purple-300 flex items-center gap-1 mx-auto"
+              >
+                <Plus size={16} />
+                Create a Shelf
+              </button>
             </div>
-          ))}
+          )}
         </div>
-      </div>
+      )}
     </div>
   );
 }
