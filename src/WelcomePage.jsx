@@ -12,10 +12,10 @@ import logo from "./assets/metabook_logo.png";
 import { useAuth } from "./useAuth";
 
 const features = [
-  { icon: BookOpen, label: "What I’m Into" },
+  { icon: BookOpen, label: "What I'm Into" },
   { icon: Eyeglasses, label: "Peek at Others" },
   { icon: ArrowsLeftRight, label: "Wanna Swap?" },
-  { icon: Gift, label: "Take It, It’s Yours!" },
+  { icon: Gift, label: "Take It, It's Yours!" },
   { icon: Megaphone, label: "You Gotta Read This" }
 ];
 
@@ -42,13 +42,9 @@ export default function WelcomePage() {
 
       <div className="z-10 text-center space-y-6">
         <div className="space-y-1">
-          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-12" />
+          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-32" />
           <p className="text-xl text-gray-300 italic">the place for book-lovers</p>
         </div>
-
-        <p className="text-lg max-w-2xl text-gray-300 mx-auto">
-          📚 Met·A·Book is your personal book-sharing space — see what others are reading, share your own bookshelf, give away old favorites, and recommend your latest obsession. Dive into a community where books find new homes and stories spark fresh connections.
-        </p>
 
         <div className="flex flex-wrap justify-center gap-4 mt-6">
           {features.map(({ icon: Icon, label }) => (
@@ -58,6 +54,10 @@ export default function WelcomePage() {
             </div>
           ))}
         </div>
+
+        <p className="text-lg max-w-2xl text-gray-300 mx-auto">
+          📚 Met·A·Book is your cozy corner in the literary universe! Share what's on your nightstand, discover hidden gems from fellow bookworms, and pass along beloved stories. Your next favorite read is just a click away!
+        </p>
 
         <div className="mt-6 flex gap-6 justify-center">
           <button
