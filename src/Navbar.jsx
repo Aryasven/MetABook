@@ -12,7 +12,7 @@ export default function Navbar({ user, onLogout }) {
         <span className="font-bold text-lg text-purple-700">Met·A·Book</span>
       </div>
       <div className="flex gap-4 items-center">
-        <Link to="/home">
+        <Link to="/tabs">
           <Button variant="ghost">Home</Button>
         </Link>
         {user && (
