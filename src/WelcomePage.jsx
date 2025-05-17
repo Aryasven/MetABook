@@ -24,7 +24,7 @@ export default function WelcomePage() {
   const { currentUser } = useAuth();
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 overflow-hidden flex flex-col items-center justify-center px-6">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 overflow-hidden flex flex-col items-center justify-center px-4 py-8 md:px-6 md:py-0">
       {/* floating visuals */}
       <div className="absolute inset-0 overflow-hidden z-0">
         {[...Array(10)].map((_, i) => (
@@ -42,11 +42,11 @@ export default function WelcomePage() {
 
       <div className="z-10 text-center space-y-6">
         <div className="space-y-1">
-          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-32" />
+          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-12 md:-mt-32" />
           <p className="text-xl text-gray-300 italic">the place for book-lovers</p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-4 mt-6">
+        <div className="flex flex-wrap justify-center gap-2 md:gap-4 mt-6">
           {features.map(({ icon: Icon, label }) => (
             <div key={label} className="flex flex-col items-center gap-2 bg-gray-800 shadow-md rounded-xl p-3 border border-gray-700">
               <Icon size={32} weight="duotone" className="text-purple-600" />
@@ -59,7 +59,7 @@ export default function WelcomePage() {
           📚 Met·A·Book is your cozy corner in the literary universe! Share what's on your nightstand, discover hidden gems from fellow bookworms, and pass along beloved stories. Your next favorite read is just a click away!
         </p>
 
-        <div className="mt-6 flex gap-6 justify-center">
+        <div className="mt-6 flex flex-wrap gap-3 md:gap-6 justify-center">
           <button
             onClick={() => navigate("/register")}
             className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 shadow"
