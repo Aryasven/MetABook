@@ -2,7 +2,7 @@
 import React from 'react';
 
 const BookCard = ({ book }) => (
-  <div className="w-20 h-28 bg-white rounded shadow flex items-center justify-center p-1 overflow-hidden">
+  <div className="w-20 h-28 bg-gray-800 rounded shadow flex items-center justify-center p-1 overflow-hidden">
     <img
       src={book.volumeInfo?.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
       alt={book.volumeInfo?.title}
