@@ -1,3 +1,4 @@
+// Register.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/metabook_logo.png";
@@ -34,46 +35,52 @@ export default function Register({ setUser }) {
     localStorage.setItem("users", JSON.stringify(users));
     localStorage.setItem("loggedInUser", username);
     setUser(newUser);
-    navigate("/profile");
+    navigate("/profile?tab=Add%20Books");
   };
 
   return (
-    <div className="relative min-h-screen bg-gradient-to-br from-purple-50 to-pink-100 flex justify-center items-center px-4">
-      {/* floating features */}
-      <div className="absolute top-1/4 left-4 hidden md:flex flex-col gap-6 z-10">
+    <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex justify-center items-center px-4 text-white overflow-hidden">
+      {/* floating features left */}
+      <div className="absolute top-1/4 left-6 hidden lg:flex flex-col gap-8 z-10">
         {features.slice(0, 2).map(({ icon: Icon, label }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-purple-700">
-            <Icon className="h-6 w-6" /> {label}
-          </div>
-        ))}
-      </div>
-      <div className="absolute top-1/4 right-4 hidden md:flex flex-col gap-6 z-10">
-        {features.slice(2, 4).map(({ icon: Icon, label }) => (
-          <div key={label} className="flex items-center gap-2 text-sm text-purple-700">
-            <Icon className="h-6 w-6" /> {label}
+          <div key={label} className="flex items-center gap-3 text-lg font-semibold text-purple-200 animate-fade-in">
+            <Icon size={28} /> {label}
           </div>
         ))}
       </div>
 
+      {/* floating features right */}
+      <div className="absolute top-1/4 right-6 hidden lg:flex flex-col gap-8 z-10">
+        {features.slice(2, 4).map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-3 text-lg font-semibold text-purple-200 animate-fade-in">
+            <Icon size={28} /> {label}
+          </div>
+        ))}
+      </div>
+
+      {/* fancy blurred book graphics */}
+      <div className="absolute top-0 left-1/3 w-72 h-72 bg-purple-700 opacity-20 rounded-full blur-3xl animate-pulse" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500 opacity-20 rounded-full blur-2xl animate-pulse" />
+
       {/* form card */}
-      <div className="z-20 bg-white shadow-xl rounded-lg p-8 max-w-md w-full space-y-6">
-        <img src={logo} alt="logo" className="w-40 mx-auto" />
+      <div className="z-20 bg-gray-950 shadow-2xl rounded-lg p-10 max-w-md w-full space-y-6 border border-gray-700">
+        <img src={logo} alt="logo" className="w-44 mx-auto" />
         <input
-          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full p-3 rounded border border-gray-700 bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="Username"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
         />
         <input
           type="email"
-          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full p-3 rounded border border-gray-700 bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
         />
         <input
           type="password"
-          className="w-full p-3 rounded border focus:outline-none focus:ring-2 focus:ring-purple-400"
+          className="w-full p-3 rounded border border-gray-700 bg-gray-900 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500"
           placeholder="Password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
