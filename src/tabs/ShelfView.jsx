@@ -1,22 +1,30 @@
 // ShelfView.jsx
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
+import Shelf from "./Shelf";
 
 export default function ShelfView() {
-  const { username } = useParams();
+  const { username } = useParams(); // this could be UID or username
+  const [searchParams] = useSearchParams();
   const [userData, setUserData] = useState(null);
   const [notFound, setNotFound] = useState(false);
+  const navigate = useNavigate();
+  const name = searchParams.get("name") || "User";
 
   useEffect(() => {
     const fetchUserShelf = async () => {
       try {
+        // First try direct lookup by document ID
         const userDoc = doc(db, "users", username);
         const snap = await getDoc(userDoc);
+        
         if (snap.exists()) {
+          console.log("Found user by ID:", username);
           setUserData(snap.data());
         } else {
+          console.error(`User not found with ID: ${username}`);
           setNotFound(true);
         }
       } catch (err) {
@@ -27,30 +35,36 @@ export default function ShelfView() {
     fetchUserShelf();
   }, [username]);
 
-  if (notFound) return <div className="p-6 text-red-500">User “{username}” not found or no shelf available.</div>;
+  if (notFound)
+    return <div className="p-6 text-red-500">User "{name}" not found or no shelf available.</div>;
 
-  if (!userData) return <div className="p-6 text-gray-500">Loading {username}'s shelf...</div>;
-
-  const books = [...(userData.books?.read || []), ...(userData.books?.wantToRead || [])];
+  if (!userData)
+    return <div className="p-6 text-gray-500">Loading {name}'s shelf...</div>;
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">{username}'s Bookshelf</h1>
-      {books.length === 0 ? (
-        <div className="text-gray-500 italic">No books added yet.</div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-6">
-          {books.map((book) => (
-            <div key={book.id} className="bg-white shadow rounded p-4 text-center hover:shadow-lg transition">
-              <img
-                src={book.thumbnail || "https://via.placeholder.com/128x195"}
-                alt={book.title}
-                className="w-full h-48 object-cover mx-auto mb-2"
-              />
-              <div className="font-semibold line-clamp-2">{book.title}</div>
-            </div>
+    <div className="p-6 space-y-10">
+      <div className="flex justify-between items-center mb-4">
+        <h1 className="text-3xl font-extrabold text-gray-200">{name}'s Bookshelves</h1>
+        <button
+          className="px-3 py-1 text-sm rounded-lg bg-violet-200 hover:bg-violet-300 font-semibold shadow-md"
+          onClick={() => navigate(-1)}
+        >
+          ← Back
+        </button>
+      </div>
+
+      {userData.shelves?.length > 0 ? (
+        <div className="space-y-12">
+          {userData.shelves.map((shelf) => (
+            <Shelf 
+              key={shelf.id} 
+              books={shelf.books || []} 
+              title={shelf.name} 
+            />
           ))}
         </div>
+      ) : (
+        <p className="text-gray-400 italic">No shelves added yet.</p>
       )}
     </div>
   );

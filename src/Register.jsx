@@ -1,6 +1,9 @@
-// Register.jsx
+// Register.jsx (with Firebase Auth)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
 import logo from "./assets/metabook_logo.png";
 import { BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
 
@@ -11,31 +14,30 @@ const features = [
   { icon: Megaphone, label: "You Gotta Read This" }
 ];
 
-export default function Register({ setUser }) {
+export default function Register() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handleRegister = () => {
-    const users = JSON.parse(localStorage.getItem("users") || "[]");
-    if (users.find((u) => u.username === username)) {
-      alert("User already exists!");
-      return;
+  const handleRegister = async () => {
+    try {
+      const auth = getAuth();
+      const result = await createUserWithEmailAndPassword(auth, email, password);
+      await updateProfile(result.user, { displayName: username });
+      await setDoc(doc(db, "users", result.user.uid), {
+        username,
+        email: result.user.email,
+        name: "", // to be updated in About Me
+        books: [],
+        stories: [],
+        shelves: []
+      });
+
+      navigate("/tabs/about-me");
+    } catch (error) {
+      alert(error.message);
     }
-    const newUser = {
-      username,
-      email,
-      password,
-      favorites: [],
-      stories: [],
-      books: []
-    };
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    localStorage.setItem("loggedInUser", username);
-    setUser(newUser);
-    navigate("/profile?tab=Add%20Books");
   };
 
   return (

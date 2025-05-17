@@ -1,45 +1,50 @@
-// AddBooks.jsx
-import React, { useState, useEffect } from 'react';
+// AddBooksTab.jsx (Unified: Search + Want to Read/Read + Shelves)
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../useAuth';
+import Shelf from './Shelf';
 
-const AddBooks = ({ refreshTrigger }) => {
+export default function AddBooksTab() {
   const { currentUser } = useAuth();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [wantToRead, setWantToRead] = useState([]);
   const [read, setRead] = useState([]);
+  const [shelves, setShelves] = useState([]);
 
-  const fetchBooks = async () => {
-    if (!currentUser) return;
-    try {
-      const userRef = doc(db, 'users', currentUser.uid);
-      const docSnap = await getDoc(userRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        setWantToRead(data.books?.wantToRead || []);
-        setRead(data.books?.read || []);
-      }
-    } catch (error) {
-      console.error('Error fetching books:', error);
-    }
-  };
+  const searchRef = useRef(null);
+  const shelvesRef = useRef(null);
 
   useEffect(() => {
-    fetchBooks();
-  }, [currentUser, refreshTrigger]);
+    if (!currentUser) return;
+    const fetchBooksAndShelves = async () => {
+      const userRef = doc(db, 'users', currentUser.uid);
+      const snap = await getDoc(userRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        setWantToRead(data.books?.wantToRead || []);
+        setRead(data.books?.read || []);
+        setShelves(data.shelves || []);
+      }
+    };
+    fetchBooksAndShelves();
+  }, [currentUser]);
 
   const saveBooks = async (updatedWantToRead, updatedRead) => {
     if (!currentUser) return;
     const userRef = doc(db, 'users', currentUser.uid);
     await setDoc(userRef, {
-      books: {
-        wantToRead: updatedWantToRead,
-        read: updatedRead
-      }
+      books: { wantToRead: updatedWantToRead, read: updatedRead }
     }, { merge: true });
+  };
+
+  const saveShelves = async (updatedShelves) => {
+    if (!currentUser) return;
+    const userRef = doc(db, 'users', currentUser.uid);
+    setShelves(updatedShelves);
+    await setDoc(userRef, { shelves: updatedShelves }, { merge: true });
   };
 
   const searchBooks = async () => {
@@ -76,92 +81,173 @@ const AddBooks = ({ refreshTrigger }) => {
     await saveBooks(updatedWant, updatedRead);
   };
 
-  const renderBookCard = (book, category) => (
-    <div
-      key={book.id}
-      className="w-40 p-2 m-2 rounded-2xl shadow bg-white text-sm hover:shadow-lg transition-all"
-      title={book.volumeInfo.title}
-    >
-      <img
-        src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195?text=No+Cover'}
-        alt={book.volumeInfo.title}
-        className="w-full h-48 object-cover rounded"
-      />
-      <div className="mt-1 font-semibold line-clamp-2">{book.volumeInfo.title}</div>
-      <div className="mt-1 flex flex-col gap-1">
-        <button
-          onClick={() => moveBook(book, category, category === 'read' ? 'wantToRead' : 'read')}
-          className="text-xs bg-blue-100 rounded px-2 py-1"
+  const addShelf = async () => {
+    if (!currentUser) return;
+    const name = prompt('Enter a name for your new shelf:');
+    if (!name) return;
+    const newShelf = { id: `shelf-${Date.now()}`, name, books: [] };
+    const updated = [...shelves, newShelf];
+    await saveShelves(updated);
+    setTimeout(() => shelvesRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+  };
+
+  const addToShelfDropdown = (book) => {
+    const handleSelect = async (shelfId) => {
+      const bookAlreadyExists = shelves.some(shelf =>
+        shelf.books.some(b => b.id === book.id)
+      );
+      if (bookAlreadyExists) return;
+
+      const updated = shelves.map(shelf => {
+        if (shelf.id === shelfId) {
+          const newBooks = [...shelf.books, book];
+          return { ...shelf, books: newBooks };
+        }
+        return shelf;
+      });
+      setShelves(updated);
+      await saveShelves(updated);
+      setQuery('');
+      setResults([]);
+      shelvesRef.current?.scrollIntoView({ behavior: 'smooth' });
+    };
+
+    return (
+      <div className="relative">
+        <select
+          className="text-xs mt-1 bg-purple-100 px-2 py-1 rounded"
+          onChange={(e) => handleSelect(e.target.value)}
+          defaultValue=""
         >
-          Move to {category === 'read' ? 'Want to Read' : 'Read'}
-        </button>
-        <button className="text-xs bg-green-100 rounded px-2 py-1">
-          Add to Shelf
-        </button>
+          <option value="" disabled>Add to Shelf</option>
+          {shelves.map(shelf => (
+            <option key={shelf.id} value={shelf.id}>{shelf.name}</option>
+          ))}
+        </select>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="p-6">
-      <h2 className="text-2xl font-bold mb-4">Add Books</h2>
-      <div className="flex gap-2">
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          placeholder="Search for books..."
-          className="p-2 border rounded w-full"
-        />
-        <button onClick={searchBooks} className="bg-indigo-500 text-white px-4 py-2 rounded">
-          Search
-        </button>
-      </div>
+      <div ref={searchRef}>
+        <h2 className="text-2xl font-bold mb-4">Add Books</h2>
+        <div className="flex gap-2">
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search for books..."
+            className="p-2 border rounded w-full"
+          />
+          <button onClick={searchBooks} className="bg-indigo-500 text-white px-4 py-2 rounded">
+            Search
+          </button>
+        </div>
 
-      {results.length > 0 && (
-        <div className="mt-6">
-          <h3 className="font-semibold mb-2">Suggestions</h3>
+        {results.length > 0 && (
+          <div className="mt-6">
+            <h3 className="font-semibold mb-2">Suggestions</h3>
+            <div className="flex flex-wrap">
+              {results.map(book => (
+                <div key={book.id} className="w-40 p-2">
+                  <img
+                    src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
+                    alt={book.volumeInfo.title}
+                    className="w-full h-48 object-cover rounded"
+                  />
+                  <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
+                  <button onClick={() => addBook(book, 'wantToRead')} className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded w-full">
+                    Add to Want to Read
+                  </button>
+                  <button onClick={() => addBook(book, 'read')} className="mt-1 text-xs bg-green-100 px-2 py-1 rounded w-full">
+                    Mark as Read
+                  </button>
+                  {addToShelfDropdown(book)}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-2">📚 Want to Read</h3>
           <div className="flex flex-wrap">
-            {results.map(book => (
-              <div key={book.id} className="w-40 p-2">
+            {wantToRead.map(book => (
+              <div key={book.id} className="w-32 p-2">
                 <img
                   src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
                   alt={book.volumeInfo.title}
-                  className="w-full h-48 object-cover rounded"
+                  className="w-full h-36 object-cover rounded"
                 />
-                <div className="mt-1 line-clamp-2 text-sm">{book.volumeInfo.title}</div>
-                <button
-                  onClick={() => addBook(book, 'wantToRead')}
-                  className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded"
-                >
-                  Add to Want to Read
-                </button>
-                <button
-                  onClick={() => addBook(book, 'read')}
-                  className="mt-1 text-xs bg-green-100 px-2 py-1 rounded"
-                >
+                <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
+                <button onClick={() => moveBook(book, 'wantToRead', 'read')} className="mt-1 text-xs bg-green-100 px-2 py-1 rounded w-full">
                   Mark as Read
                 </button>
+                {addToShelfDropdown(book)}
               </div>
             ))}
           </div>
         </div>
-      )}
 
-      <div className="mt-8">
-        <h3 className="text-xl font-semibold mb-2">📚 Want to Read</h3>
-        <div className="flex flex-wrap">
-          {wantToRead.map(book => renderBookCard(book, 'wantToRead'))}
+        <div className="mt-8">
+          <h3 className="text-xl font-semibold mb-2">✅ Read</h3>
+          <div className="flex flex-wrap">
+            {read.map(book => (
+              <div key={book.id} className="w-32 p-2">
+                <img
+                  src={book.volumeInfo.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
+                  alt={book.volumeInfo.title}
+                  className="w-full h-36 object-cover rounded"
+                />
+                <div className="mt-1 line-clamp-2 text-sm font-medium">{book.volumeInfo.title}</div>
+                <button onClick={() => moveBook(book, 'read', 'wantToRead')} className="mt-1 text-xs bg-yellow-100 px-2 py-1 rounded w-full">
+                  Move to Want to Read
+                </button>
+                {addToShelfDropdown(book)}
+              </div>
+            ))}
+          </div>
         </div>
       </div>
 
-      <div className="mt-8">
-        <h3 className="text-xl font-semibold mb-2">✅ Read</h3>
-        <div className="flex flex-wrap">
-          {read.map(book => renderBookCard(book, 'read'))}
+      {/* Shelves Section */}
+      <div ref={shelvesRef} className="mt-16">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold">My Shelves</h2>
+          <button
+            onClick={addShelf}
+            className="bg-violet-500 hover:bg-violet-600 text-white px-4 py-2 rounded shadow"
+          >
+            ➕ Add Shelf
+          </button>
+        </div>
+        <div className="space-y-10">
+          {shelves.map(shelf => (
+            <div key={shelf.id}>
+              <div className="flex justify-between items-center mb-2">
+                <h3 className="text-xl font-semibold"> {shelf.name}</h3>
+                <button
+                  onClick={() => searchRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                  className="text-xs bg-indigo-100 hover:bg-indigo-200 px-3 py-1 rounded"
+                >
+                  ➕ Add Book
+                </button>
+              </div>
+              <Shelf
+                shelfId={shelf.id}
+                books={shelf.books}
+                updateBooks={(updated) => {
+                  const updatedShelves = shelves.map(s =>
+                    s.id === shelf.id ? { ...s, books: updated } : s
+                  );
+                  setShelves(updatedShelves);
+                  saveShelves(updatedShelves);
+                }}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
-};
-
-export default AddBooks;
+}
