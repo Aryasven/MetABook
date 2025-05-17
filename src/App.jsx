@@ -13,7 +13,8 @@ import UserStories from "./tabs/UserStoriesTab";
 import AboutMe from "./tabs/AboutMeTab";
 import AddReviews from "./tabs/AddReviewsTab";
 import { UserShelves } from "./tabs/UserShelvesTab";
-import { Communities } from "./tabs/CommunitiesTab"
+import { Communities } from "./tabs/CommunitiesTab";
+import FindFriends from "./tabs/FindFriends";
 import { Contribute } from "./Contribute";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
@@ -31,8 +32,6 @@ const ProtectedRoute = ({ children }) => {
   
   return children;
 };
-
-// Removed dummy users as we're now using Firestore
 
 export default function App() {
   const [users, setUsers] = useState([]);
@@ -55,8 +54,6 @@ export default function App() {
     fetchUsers();
   }, []);
 
-  // We'll define ProtectedRoute inside the AuthProvider context
-
   return (
     <AuthProvider>
       <Router>
@@ -76,6 +73,7 @@ export default function App() {
             <Route path="add-books" element={<AddBooks />} />
             <Route path="see-my-shelf" element={<SeeMyShelf />} />
             <Route path="add-reviews" element={<AddReviews />} />
+            <Route path="find-friends" element={<FindFriends />} />
             <Route path="stories" element={<UserStories />} />
             <Route path="shelves" element={<UserShelves />} />
             <Route path="communities" element={<Communities />} />

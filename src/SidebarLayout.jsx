@@ -16,7 +16,8 @@ const tabGroups = [
     items: [
       { label: "About Me", path: "/tabs/about-me" },
       { label: "My Library", path: "/tabs/add-books" },
-      { label: "Add Reviews", path: "/tabs/add-reviews" }
+      { label: "Add Reviews", path: "/tabs/add-reviews" },
+      { label: "Find Friends", path: "/tabs/find-friends" }
     ]
   },
   {
