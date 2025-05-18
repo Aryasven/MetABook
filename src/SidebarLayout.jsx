@@ -1,7 +1,10 @@
 // SidebarLayout.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { List, X } from "phosphor-react";
+import { db } from "./firebase";
+import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { useAuth } from "./useAuth";
 
 const tabGroups = [
   {
@@ -32,6 +35,8 @@ export default function SidebarLayout() {
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Removed notification states
+  const { currentUser } = useAuth();
   
   // Close sidebar on mobile when route changes
   useEffect(() => {
@@ -55,6 +60,8 @@ export default function SidebarLayout() {
     
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+  
+  // Removed notification-related effects and functions
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 text-white">
@@ -100,9 +107,17 @@ export default function SidebarLayout() {
         />
       )}
 
-      {/* Main content */}
-      <div className="flex-1 p-2 sm:p-4 md:p-6 overflow-auto bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-800/30 backdrop-blur-sm">
-        <Outlet />
+      {/* Main content with top navigation bar */}
+      <div className="flex-1 flex flex-col">
+        {/* Top navigation bar */}
+        <div className="bg-gray-900/90 backdrop-blur-md p-2 flex justify-end items-center border-b border-gray-800 sticky top-0 z-50">
+          {/* Empty top bar - notification bell moved to Navbar */}
+        </div>
+        
+        {/* Main content area */}
+        <div className="flex-1 p-2 sm:p-4 md:p-6 overflow-auto bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-800/30 backdrop-blur-sm">
+          <Outlet />
+        </div>
       </div>
     </div>
   );
