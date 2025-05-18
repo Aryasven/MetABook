@@ -1,4 +1,4 @@
-// FindFriends.jsx
+// F// FindFriends.jsx
 import React, { useState, useEffect } from "react";
 import { GoogleAuthProvider, getAuth, signInWithPopup } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
