@@ -2,11 +2,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { db } from '../firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { useAuth } from '../useAuth';
 import Shelf from './Shelf';
 import { MagnifyingGlass, BookOpen, BookmarkSimple, Books, Plus, ArrowRight, PencilSimple, Trash, CaretUp, CaretDown } from 'phosphor-react';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 export default function AddBooksTab() {
   const { currentUser } = useAuth();
@@ -205,21 +204,30 @@ export default function AddBooksTab() {
     }
   };
   
-  // Handle drag end event for reordering shelves
-  const handleDragEnd = (result) => {
-    // Dropped outside the list
-    if (!result.destination) {
-      return;
-    }
+  // Move shelf up in the order
+  const moveShelfUp = (index) => {
+    if (index === 0) return; // Already at the top
     
-    // Reorder the shelves array
-    const reorderedShelves = Array.from(shelves);
-    const [removed] = reorderedShelves.splice(result.source.index, 1);
-    reorderedShelves.splice(result.destination.index, 0, removed);
+    const updatedShelves = [...shelves];
+    const temp = updatedShelves[index];
+    updatedShelves[index] = updatedShelves[index - 1];
+    updatedShelves[index - 1] = temp;
     
-    // Update state and save to Firestore
-    setShelves(reorderedShelves);
-    saveShelves(reorderedShelves);
+    setShelves(updatedShelves);
+    saveShelves(updatedShelves);
+  };
+  
+  // Move shelf down in the order
+  const moveShelfDown = (index) => {
+    if (index === shelves.length - 1) return; // Already at the bottom
+    
+    const updatedShelves = [...shelves];
+    const temp = updatedShelves[index];
+    updatedShelves[index] = updatedShelves[index + 1];
+    updatedShelves[index + 1] = temp;
+    
+    setShelves(updatedShelves);
+    saveShelves(updatedShelves);
   };
 
   const addToShelfDropdown = (book) => {
@@ -528,89 +536,81 @@ export default function AddBooksTab() {
           </div>
           
           {shelves.length > 0 ? (
-            <DragDropContext onDragEnd={handleDragEnd}>
-              <Droppable droppableId="shelves">
-                {(provided) => (
-                  <div 
-                    className="space-y-10" 
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                  >
-                    {shelves.map((shelf, index) => (
-                      <Draggable key={shelf.id} draggableId={shelf.id} index={index}>
-                        {(provided, snapshot) => (
-                          <div 
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={`bg-gray-900 p-4 rounded-lg border ${snapshot.isDragging ? 'border-purple-500' : 'border-gray-800'}`}
-                          >
-                            <div className="flex justify-between items-center mb-4">
-                              <div className="flex items-center gap-2">
-                                <div 
-                                  {...provided.dragHandleProps}
-                                  className="cursor-grab p-1 hover:bg-gray-800 rounded"
-                                >
-                                  <div className="flex flex-col items-center">
-                                    <CaretUp size={12} className="text-gray-500" />
-                                    <CaretDown size={12} className="text-gray-500" />
-                                  </div>
-                                </div>
-                                <h3 className="text-lg font-semibold">{shelf.name}</h3>
-                                <div className="flex gap-1">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      renameShelf(shelf.id);
-                                    }}
-                                    className="text-gray-400 hover:text-purple-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
-                                    title="Rename shelf"
-                                  >
-                                    <PencilSimple size={16} />
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      deleteShelf(shelf.id);
-                                    }}
-                                    className="text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
-                                    title="Delete shelf"
-                                  >
-                                    <Trash size={16} />
-                                  </button>
-                                </div>
-                              </div>
-                              <button
-                                onClick={() => {
-                                  setActiveTab('search');
-                                  setTimeout(() => searchInputRef.current?.focus(), 100);
-                                }}
-                                className="text-xs flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
-                              >
-                                <Plus size={14} />
-                                Add Book
-                              </button>
-                            </div>
-                            <Shelf
-                              books={shelf.books || []}
-                              title={null} // We already show the title above
-                              updateBooks={(updated) => {
-                                const updatedShelves = shelves.map(s =>
-                                  s.id === shelf.id ? { ...s, books: updated } : s
-                                );
-                                setShelves(updatedShelves);
-                                saveShelves(updatedShelves);
-                              }}
-                            />
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
-                    {provided.placeholder}
+            <div className="space-y-10">
+              {shelves.map((shelf, index) => (
+                <div 
+                  key={shelf.id}
+                  className="bg-gray-900 p-4 rounded-lg border border-gray-800"
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col">
+                        <button
+                          onClick={() => moveShelfUp(index)}
+                          disabled={index === 0}
+                          className={`p-1 rounded-t ${index === 0 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-purple-400 hover:bg-gray-800'}`}
+                          title="Move shelf up"
+                        >
+                          <CaretUp size={14} />
+                        </button>
+                        <button
+                          onClick={() => moveShelfDown(index)}
+                          disabled={index === shelves.length - 1}
+                          className={`p-1 rounded-b ${index === shelves.length - 1 ? 'text-gray-600 cursor-not-allowed' : 'text-gray-400 hover:text-purple-400 hover:bg-gray-800'}`}
+                          title="Move shelf down"
+                        >
+                          <CaretDown size={14} />
+                        </button>
+                      </div>
+                      <h3 className="text-lg font-semibold">{shelf.name}</h3>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            renameShelf(shelf.id);
+                          }}
+                          className="text-gray-400 hover:text-purple-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
+                          title="Rename shelf"
+                        >
+                          <PencilSimple size={16} />
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteShelf(shelf.id);
+                          }}
+                          className="text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
+                          title="Delete shelf"
+                        >
+                          <Trash size={16} />
+                        </button>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setActiveTab('search');
+                        setTimeout(() => searchInputRef.current?.focus(), 100);
+                      }}
+                      className="text-xs flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
+                    >
+                      <Plus size={14} />
+                      Add Book
+                    </button>
                   </div>
-                )}
-              </Droppable>
-            </DragDropContext>
-            
+                  <Shelf
+                    books={shelf.books || []}
+                    title={null} // We already show the title above
+                    updateBooks={(updated) => {
+                      const updatedShelves = shelves.map(s =>
+                        s.id === shelf.id ? { ...s, books: updated } : s
+                      );
+                      setShelves(updatedShelves);
+                      saveShelves(updatedShelves);
+                    }}
+                  />
+                </div>
+              ))}
+            </div>
           ) : (
             <div className="text-center py-8 bg-gray-800 rounded-lg border border-gray-700">
               <Books size={40} className="mx-auto text-gray-600 mb-2" />

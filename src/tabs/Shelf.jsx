@@ -1,5 +1,6 @@
 // Shelf.jsx
 import React, { useEffect, useState } from 'react';
+import { CaretDown, CaretUp } from 'phosphor-react';
 
 const BookCard = ({ book }) => (
   <div className="w-20 h-28 bg-gray-800 rounded shadow flex items-center justify-center p-1 overflow-hidden">
@@ -14,6 +15,7 @@ const BookCard = ({ book }) => (
 
 const Shelf = ({ books, title }) => {
   const [booksPerRow, setBooksPerRow] = useState(6);
+  const [expanded, setExpanded] = useState(false);
   
   // Update books per row based on screen size
   useEffect(() => {
@@ -41,11 +43,40 @@ const Shelf = ({ books, title }) => {
     rows.push(uniqueBooks.slice(i, i + booksPerRow));
   }
 
+  // Determine if we need to show expand/collapse button (more than 2 rows)
+  const needsExpansion = rows.length > 2;
+  
+  // If not expanded and needs expansion, only show first 2 rows
+  const visibleRows = expanded || !needsExpansion ? rows : rows.slice(0, 2);
+
   return (
     <div className="w-fit">
-      {title && <h3 className="text-lg font-semibold text-left mb-2">{title}</h3>}
+      <div className="flex justify-between items-center mb-2">
+        {title && <h3 className="text-lg font-semibold text-left">{title}</h3>}
+        {needsExpansion && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded(!expanded);
+            }}
+            className="text-xs flex items-center gap-1 text-purple-400 hover:text-purple-300"
+          >
+            {expanded ? (
+              <>
+                <CaretUp size={14} />
+                Show less
+              </>
+            ) : (
+              <>
+                <CaretDown size={14} />
+                Show all ({rows.length} rows)
+              </>
+            )}
+          </button>
+        )}
+      </div>
       <div className="space-y-4">
-        {rows.map((row, i) => (
+        {visibleRows.map((row, i) => (
           <div key={i} className="relative h-40 w-full">
             <img
               src="/wood-texture.jpg"
