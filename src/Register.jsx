@@ -34,7 +34,7 @@ export default function Register() {
         shelves: []
       });
 
-      navigate("/tabs/about-me");
+      navigate("/tabs/add-books");
     } catch (error) {
       alert(error.message);
     }

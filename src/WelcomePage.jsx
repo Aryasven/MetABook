@@ -22,6 +22,13 @@ const features = [
 export default function WelcomePage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
+  
+  // // Redirect to home if user is already logged in
+  // React.useEffect(() => {
+  //   if (currentUser) {
+  //     navigate("/tabs");
+  //   }
+  // }, [currentUser, navigate]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 overflow-hidden flex flex-col items-center justify-center px-4 py-8 md:px-6 md:py-0">
@@ -30,7 +37,7 @@ export default function WelcomePage() {
         {[...Array(10)].map((_, i) => (
           <div
             key={i}
-            className="absolute w-20 h-20 bg-purple-400 rounded-full opacity-10 animate-pulse blur-2xl"
+            className="absolute w-20 h-20 bg-purple-300 rounded-full opacity-20 animate-pulse blur-2xl"
             style={{
               top: `${Math.random() * 90}%`,
               left: `${Math.random() * 90}%`,
@@ -68,7 +75,7 @@ export default function WelcomePage() {
           </button>
           <button
             onClick={() => navigate("/login")}
-            className="bg-gray-800 text-purple-300 px-6 py-2 rounded-lg border border-purple-500 hover:bg-gray-700 shadow"
+            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow"
           >
             Login
           </button>

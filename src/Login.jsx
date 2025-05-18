@@ -1,8 +1,8 @@
 // Login.jsx (with Firebase Auth)
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/metabook_logo.png";
-import { signInWithEmailAndPassword, getAuth, sendPasswordResetEmail } from "firebase/auth";
+import { signInWithEmailAndPassword, getAuth, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
 import { EnvelopeSimple, LockSimple, ArrowRight } from "phosphor-react";
 
 export default function Login() {
@@ -11,6 +11,18 @@ export default function Login() {
   const [resetSent, setResetSent] = useState(false);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const auth = getAuth();
+  
+  // Check if user is already logged in, redirect to home if they are
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        navigate("/tabs");
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [navigate]);
 
   const handleLogin = async (e) => {
     e.preventDefault();

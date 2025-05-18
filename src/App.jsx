@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import WelcomePage from "./WelcomePage";
 import Home from "./Home"
 import Navbar from "./Navbar";
@@ -24,10 +24,52 @@ import { AuthProvider, useAuth } from "./useAuth";
 // ProtectedRoute component to handle authentication checks
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Give auth a moment to initialize before redirecting
+    const checkAuth = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(checkAuth);
+  }, []);
+  
+  if (loading) {
+    // Show nothing while checking auth status
+    return null;
+  }
   
   if (!currentUser) {
     // Redirect to login if user is not authenticated
     return <Navigate to="/login" />;
+  }
+  
+  return children;
+};
+
+// AuthRedirect component to redirect authenticated users away from auth pages
+const AuthRedirect = ({ children }) => {
+  const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Give auth a moment to initialize before redirecting
+    const checkAuth = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(checkAuth);
+  }, []);
+  
+  if (loading) {
+    // Show nothing while checking auth status
+    return null;
+  }
+  
+  if (currentUser) {
+    // Redirect to home if user is already authenticated
+    return <Navigate to="/tabs" replace />;
   }
   
   return children;
@@ -52,6 +94,16 @@ export default function App() {
     };
     
     fetchUsers();
+    
+    // Expose the setUsers function globally for components to update user data
+    window.updateUsers = (updatedUsers) => {
+      setUsers(updatedUsers);
+    };
+    
+    return () => {
+      // Clean up the global function when component unmounts
+      delete window.updateUsers;
+    };
   }, []);
 
   return (
@@ -60,8 +112,16 @@ export default function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<WelcomePage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={
+            <AuthRedirect>
+              <Login />
+            </AuthRedirect>
+          } />
+          <Route path="/register" element={
+            <AuthRedirect>
+              <Register />
+            </AuthRedirect>
+          } />
           <Route path="/shelf/:username" element={<ShelfView />} />
           <Route path="/tabs" element={
             <ProtectedRoute>

@@ -159,7 +159,7 @@ export default function FindFriends() {
   };
 
   return (
-    <div className="p-6 text-white max-w-4xl mx-auto">
+    <div className="p-6 text-white max-w-4xl mx-auto bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
       <div className="flex items-center gap-3 mb-8">
         <div className="bg-purple-600 p-3 rounded-full">
           <UserPlus size={24} weight="bold" />

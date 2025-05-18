@@ -5,7 +5,8 @@ import { db } from '../firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '../useAuth';
 import Shelf from './Shelf';
-import { MagnifyingGlass, BookOpen, BookmarkSimple, Books, Plus, ArrowRight } from 'phosphor-react';
+import { MagnifyingGlass, BookOpen, BookmarkSimple, Books, Plus, ArrowRight, PencilSimple, Trash, CaretUp, CaretDown } from 'phosphor-react';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 
 export default function AddBooksTab() {
   const { currentUser } = useAuth();
@@ -16,6 +17,7 @@ export default function AddBooksTab() {
   const [shelves, setShelves] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('search');
+  const [editingShelf, setEditingShelf] = useState(null);
 
   const searchRef = useRef(null);
   const shelvesRef = useRef(null);
@@ -65,6 +67,17 @@ export default function AddBooksTab() {
       const userRef = doc(db, 'users', currentUser.uid);
       setShelves(updatedShelves);
       await setDoc(userRef, { shelves: updatedShelves }, { merge: true });
+      
+      // Trigger a global update to refresh data in other components
+      if (typeof window.updateUsers === 'function') {
+        // Fetch all users to update the global state
+        const snapshot = await getDocs(collection(db, 'users'));
+        const userData = snapshot.docs.map(doc => ({
+          uid: doc.id,
+          ...doc.data()
+        }));
+        window.updateUsers(userData);
+      }
     } catch (err) {
       console.error("Error saving shelves:", err);
     } finally {
@@ -154,6 +167,59 @@ export default function AddBooksTab() {
     } finally {
       setLoading(false);
     }
+  };
+  
+  const renameShelf = async (shelfId) => {
+    const shelf = shelves.find(s => s.id === shelfId);
+    if (!shelf) return;
+    
+    const newName = prompt('Enter a new name for this shelf:', shelf.name);
+    if (!newName || newName === shelf.name) return;
+    
+    setLoading(true);
+    try {
+      const updated = shelves.map(s => 
+        s.id === shelfId ? { ...s, name: newName } : s
+      );
+      await saveShelves(updated);
+    } catch (err) {
+      console.error("Error renaming shelf:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const deleteShelf = async (shelfId) => {
+    if (!confirm('Are you sure you want to delete this shelf? All books will be removed from this shelf.')) {
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const updated = shelves.filter(s => s.id !== shelfId);
+      await saveShelves(updated);
+    } catch (err) {
+      console.error("Error deleting shelf:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle drag end event for reordering shelves
+  const handleDragEnd = (result) => {
+    // Dropped outside the list
+    if (!result.destination) {
+      return;
+    }
+    
+    // Reorder the shelves array
+    const reorderedShelves = Array.from(shelves);
+    const [removed] = reorderedShelves.splice(result.source.index, 1);
+    reorderedShelves.splice(result.destination.index, 0, removed);
+    
+    // Update state and save to Firestore
+    setShelves(reorderedShelves);
+    saveShelves(reorderedShelves);
   };
 
   const addToShelfDropdown = (book) => {
@@ -270,7 +336,7 @@ export default function AddBooksTab() {
   ];
 
   return (
-    <div className="p-6 text-white max-w-6xl mx-auto">
+    <div className="p-6 text-white max-w-6xl mx-auto bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
       <div className="flex items-center gap-3 mb-8">
         <div className="bg-purple-600 p-3 rounded-full">
           <Books size={24} weight="bold" />
@@ -462,36 +528,89 @@ export default function AddBooksTab() {
           </div>
           
           {shelves.length > 0 ? (
-            <div className="space-y-10">
-              {shelves.map(shelf => (
-                <div key={shelf.id} className="bg-gray-900 p-4 rounded-lg border border-gray-800">
-                  <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold">{shelf.name}</h3>
-                    <button
-                      onClick={() => {
-                        setActiveTab('search');
-                        setTimeout(() => searchInputRef.current?.focus(), 100);
-                      }}
-                      className="text-xs flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
-                    >
-                      <Plus size={14} />
-                      Add Book
-                    </button>
+            <DragDropContext onDragEnd={handleDragEnd}>
+              <Droppable droppableId="shelves">
+                {(provided) => (
+                  <div 
+                    className="space-y-10" 
+                    {...provided.droppableProps}
+                    ref={provided.innerRef}
+                  >
+                    {shelves.map((shelf, index) => (
+                      <Draggable key={shelf.id} draggableId={shelf.id} index={index}>
+                        {(provided, snapshot) => (
+                          <div 
+                            ref={provided.innerRef}
+                            {...provided.draggableProps}
+                            className={`bg-gray-900 p-4 rounded-lg border ${snapshot.isDragging ? 'border-purple-500' : 'border-gray-800'}`}
+                          >
+                            <div className="flex justify-between items-center mb-4">
+                              <div className="flex items-center gap-2">
+                                <div 
+                                  {...provided.dragHandleProps}
+                                  className="cursor-grab p-1 hover:bg-gray-800 rounded"
+                                >
+                                  <div className="flex flex-col items-center">
+                                    <CaretUp size={12} className="text-gray-500" />
+                                    <CaretDown size={12} className="text-gray-500" />
+                                  </div>
+                                </div>
+                                <h3 className="text-lg font-semibold">{shelf.name}</h3>
+                                <div className="flex gap-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      renameShelf(shelf.id);
+                                    }}
+                                    className="text-gray-400 hover:text-purple-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
+                                    title="Rename shelf"
+                                  >
+                                    <PencilSimple size={16} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteShelf(shelf.id);
+                                    }}
+                                    className="text-gray-400 hover:text-red-400 p-1 rounded-full hover:bg-gray-800 transition-colors"
+                                    title="Delete shelf"
+                                  >
+                                    <Trash size={16} />
+                                  </button>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setActiveTab('search');
+                                  setTimeout(() => searchInputRef.current?.focus(), 100);
+                                }}
+                                className="text-xs flex items-center gap-1 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors"
+                              >
+                                <Plus size={14} />
+                                Add Book
+                              </button>
+                            </div>
+                            <Shelf
+                              books={shelf.books || []}
+                              title={null} // We already show the title above
+                              updateBooks={(updated) => {
+                                const updatedShelves = shelves.map(s =>
+                                  s.id === shelf.id ? { ...s, books: updated } : s
+                                );
+                                setShelves(updatedShelves);
+                                saveShelves(updatedShelves);
+                              }}
+                            />
+                          </div>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provided.placeholder}
                   </div>
-                  <Shelf
-                    books={shelf.books || []}
-                    title={null} // We already show the title above
-                    updateBooks={(updated) => {
-                      const updatedShelves = shelves.map(s =>
-                        s.id === shelf.id ? { ...s, books: updated } : s
-                      );
-                      setShelves(updatedShelves);
-                      saveShelves(updatedShelves);
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
+                )}
+              </Droppable>
+            </DragDropContext>
+            
           ) : (
             <div className="text-center py-8 bg-gray-800 rounded-lg border border-gray-700">
               <Books size={40} className="mx-auto text-gray-600 mb-2" />

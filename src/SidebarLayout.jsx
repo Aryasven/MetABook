@@ -57,7 +57,7 @@ export default function SidebarLayout() {
   }, []);
 
   return (
-    <div className="flex min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 text-white">
+    <div className="flex min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-indigo-800 text-white">
       {/* Mobile menu button */}
       <button 
         onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -101,7 +101,7 @@ export default function SidebarLayout() {
       )}
 
       {/* Main content */}
-      <div className="flex-1 p-6 overflow-auto">
+      <div className="flex-1 p-2 sm:p-4 md:p-6 overflow-auto bg-gradient-to-br from-indigo-900/30 via-purple-900/30 to-indigo-800/30 backdrop-blur-sm">
         <Outlet />
       </div>
     </div>
