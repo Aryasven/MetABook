@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   ChatCircleText, BookOpen, ArrowsLeftRight, Gift, 
   Megaphone, X, Users, BookmarkSimple, Books,
-  House, Activity, Heart
+  House, Activity, Heart, Bell, UserPlus, BookBookmark
 } from "phosphor-react";
 import Shelf from "./tabs/Shelf";
 import { db } from "./firebase";
@@ -25,8 +25,12 @@ export default function Home({ users }) {
   const [loading, setLoading] = useState(false);
   const [expandedStories, setExpandedStories] = useState([]);
   const [activeTab, setActiveTab] = useState("feed");
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const navigate = useNavigate();
   const { currentUser: authUser } = useAuth();
+  const notificationRef = useRef(null);
 
   // Function to fetch users data from Firestore
   const fetchUsersData = async () => {
@@ -88,6 +92,59 @@ export default function Home({ users }) {
       fetchUsersData();
     }
   }, [activeTab]);
+  
+  // Close notifications when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    };
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+  
+  // Generate sample notifications for demo purposes
+  useEffect(() => {
+    if (users.length > 0) {
+      const sampleNotifications = [
+        {
+          id: 1,
+          type: "friend_request",
+          user: users[0],
+          message: "sent you a friend request",
+          timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
+          read: false
+        },
+        {
+          id: 2,
+          type: "shelf_update",
+          user: users.length > 1 ? users[1] : users[0],
+          message: "updated their bookshelf",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
+          read: false
+        },
+        {
+          id: 3,
+          type: "new_story",
+          user: users.length > 2 ? users[2] : users[0],
+          message: "shared a new story",
+          timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+          read: true
+        }
+      ];
+      
+      setNotifications(sampleNotifications);
+      setUnreadCount(sampleNotifications.filter(n => !n.read).length);
+    }
+  }, [users]);
+  
+  // Mark notifications as read
+  const markAsRead = () => {
+    setNotifications(notifications.map(n => ({ ...n, read: true })));
+    setUnreadCount(0);
+  };
 
   const handlePostStory = async () => {
     if (!currentUser || !showStoryInput || !storyText.trim()) return;
@@ -276,21 +333,94 @@ export default function Home({ users }) {
         
         {/* Tab Navigation - Directly below welcome section */}
         <div className="border-t border-gray-700 p-1">
-          <div className="flex space-x-1">
-            {tabs.map(tab => (
+          <div className="flex justify-between">
+            <div className="flex space-x-1">
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    activeTab === tab.id
+                      ? 'bg-purple-600 text-white'
+                      : 'hover:bg-gray-800 text-gray-300'
+                  }`}
+                >
+                  <tab.icon size={18} />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </div>
+            
+            {/* Notification Bell */}
+            <div className="relative" ref={notificationRef}>
               <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  activeTab === tab.id
-                    ? 'bg-purple-600 text-white'
-                    : 'hover:bg-gray-800 text-gray-300'
-                }`}
+                onClick={() => {
+                  setShowNotifications(!showNotifications);
+                  if (!showNotifications) markAsRead();
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg hover:bg-gray-800 text-gray-300 transition-colors"
               >
-                <tab.icon size={18} />
-                <span>{tab.label}</span>
+                <Bell size={18} weight={unreadCount > 0 ? "fill" : "regular"} className={unreadCount > 0 ? "text-purple-400" : ""} />
+                {unreadCount > 0 && (
+                  <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount}
+                  </span>
+                )}
               </button>
-            ))}
+              
+              {/* Notification Dropdown */}
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-gray-900 border border-gray-700 rounded-lg shadow-lg z-50 overflow-hidden">
+                  <div className="p-3 border-b border-gray-700 flex justify-between items-center">
+                    <h3 className="font-semibold">Notifications</h3>
+                    {unreadCount > 0 && (
+                      <button 
+                        onClick={markAsRead}
+                        className="text-xs text-purple-400 hover:text-purple-300"
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map(notification => {
+                        // Choose icon based on notification type
+                        let NotificationIcon = Bell;
+                        if (notification.type === "friend_request") NotificationIcon = UserPlus;
+                        else if (notification.type === "shelf_update") NotificationIcon = BookBookmark;
+                        else if (notification.type === "new_story") NotificationIcon = ChatCircleText;
+                        
+                        return (
+                          <div 
+                            key={notification.id} 
+                            className={`p-3 border-b border-gray-800 hover:bg-gray-800/50 cursor-pointer ${!notification.read ? 'bg-gray-800/30' : ''}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-full ${!notification.read ? 'bg-purple-600/20' : 'bg-gray-800'}`}>
+                                <NotificationIcon size={16} className={!notification.read ? "text-purple-400" : "text-gray-400"} />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm">
+                                  <span className="font-semibold">{notification.user.name || notification.user.username}</span> {notification.message}
+                                </p>
+                                <p className="text-xs text-gray-400 mt-1">
+                                  {new Date(notification.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 text-center text-gray-400">
+                        <p>No notifications yet</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
