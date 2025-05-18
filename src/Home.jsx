@@ -246,14 +246,14 @@ export default function Home({ users }) {
           </button>
         </div>
         
-        <div className="overflow-x-auto pb-2 hide-scrollbar">
-          <div className="flex space-x-6 min-w-max">
+        <div className="overflow-x-auto pb-1 sm:pb-2 -mx-1 hide-scrollbar">
+          <div className="flex space-x-2 sm:space-x-6 min-w-max">
             {users.filter(user => user.shelves?.length > 0).length > 0 ? (
               users.filter(user => user.shelves?.length > 0).map(user => (
                 <div
                   key={user.username || user.uid}
                   onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                  className="w-[98vw] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-2 sm:p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                  className="w-[100vw] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-1 sm:p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Users size={18} className="text-purple-400" />
@@ -261,7 +261,7 @@ export default function Home({ users }) {
                   </div>
                   
                   {user.shelves && user.shelves.length > 0 ? (
-                    <div className="max-h-[350px] sm:max-h-[450px] md:max-h-[550px] overflow-y-auto pr-2 hide-scrollbar">
+                    <div className="max-h-[450px] sm:max-h-[500px] md:max-h-[550px] overflow-y-auto pr-0 sm:pr-2 hide-scrollbar">
                       <div className="space-y-6 md:space-y-8">
                         {user.shelves.map(shelf => (
                           <div key={shelf.id} className="shelf-container">
