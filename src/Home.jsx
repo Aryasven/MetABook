@@ -253,7 +253,7 @@ export default function Home({ users }) {
                 <div
                   key={user.username || user.uid}
                   onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                  className="w-[calc(100vw-3rem)] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                  className="w-[95vw] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Users size={18} className="text-purple-400" />
@@ -301,9 +301,7 @@ export default function Home({ users }) {
       <style jsx>{`
         @media (max-width: 640px) {
           .shelf-container .relative {
-            transform: scale(0.85);
-            transform-origin: left top;
-            margin-bottom: -1rem;
+            margin-bottom: -0.5rem;
           }
         }
       `}</style>
