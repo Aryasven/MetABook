@@ -12,7 +12,7 @@ import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore"
 import { useAuth } from "./useAuth";
 
 const featureMap = [
-  { icon: BookOpen, label: "What I'm Into", color: "from-blue-600 to-blue-800", lightColor: "text-blue-400" },
+  { icon: BookOpen, label: "Build My Library", color: "from-blue-600 to-blue-800", lightColor: "text-blue-400" },
   { icon: ArrowsLeftRight, label: "Wanna Swap?", color: "from-green-600 to-green-800", lightColor: "text-green-400" },
   { icon: Gift, label: "Take It, It's Yours!", color: "from-purple-600 to-purple-800", lightColor: "text-purple-400" },
   { icon: Megaphone, label: "You Gotta Read This", color: "from-pink-600 to-pink-800", lightColor: "text-pink-400" }
@@ -202,7 +202,7 @@ export default function Home({ users }) {
               <button
                 key={feature.label}
                 onClick={() => {
-                  if (feature.label === "What I'm Into") {
+                  if (feature.label === "Build My Library") {
                     navigate("/tabs/add-books");
                   } else {
                     setShowStoryInput(feature);

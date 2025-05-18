@@ -344,16 +344,16 @@ export default function AddBooksTab() {
   ];
 
   return (
-    <div className="p-6 text-white max-w-6xl mx-auto bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
-      <div className="flex items-center gap-3 mb-8">
-        <div className="bg-purple-600 p-3 rounded-full">
-          <Books size={24} weight="bold" />
+    <div className="p-4 sm:p-5 text-white max-w-[95%] w-full mx-auto bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-md rounded-xl border border-gray-700 shadow-lg -mt-2 sm:-mt-4">
+      <div className="flex items-center gap-3 mb-5">
+        <div className="bg-purple-600 p-2 rounded-full">
+          <Books size={22} weight="bold" />
         </div>
-        <h1 className="text-2xl font-bold">My Library</h1>
+        <h1 className="text-xl font-bold">My Library</h1>
       </div>
 
       {/* Tabs */}
-      <div className="flex flex-wrap border-b border-gray-700 mb-6">
+      <div className="flex flex-wrap border-b border-gray-700 mb-4">
         {tabs.map(tab => (
           <button
             key={tab.id}
@@ -391,7 +391,7 @@ export default function AddBooksTab() {
       {/* Search Section */}
       {activeTab === 'search' && (
         <div ref={searchRef}>
-          <form onSubmit={searchBooks} className="relative mb-8">
+          <form onSubmit={searchBooks} className="relative mb-5">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <MagnifyingGlass size={20} className="text-gray-400" />
             </div>
@@ -413,7 +413,7 @@ export default function AddBooksTab() {
           </form>
 
           {results.length > 0 && (
-            <div className="bg-gray-900 p-4 rounded-lg border border-gray-800">
+            <div className="bg-gray-900 p-3 rounded-lg border border-gray-800">
               <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
                 <MagnifyingGlass size={20} className="text-purple-400" />
                 Search Results
@@ -521,7 +521,7 @@ export default function AddBooksTab() {
       {/* Shelves Section */}
       {activeTab === 'shelves' && (
         <div ref={shelvesRef}>
-          <div className="flex justify-between items-center mb-6">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-xl font-semibold flex items-center gap-2">
               <Books size={20} className="text-purple-400" />
               My Shelves
@@ -536,11 +536,11 @@ export default function AddBooksTab() {
           </div>
           
           {shelves.length > 0 ? (
-            <div className="space-y-10">
+            <div className="space-y-6">
               {shelves.map((shelf, index) => (
                 <div 
                   key={shelf.id}
-                  className="bg-gray-900 p-4 rounded-lg border border-gray-800"
+                  className="bg-gray-900 p-3 rounded-lg border border-gray-800"
                 >
                   <div className="flex justify-between items-center mb-4">
                     <div className="flex items-center gap-2">
