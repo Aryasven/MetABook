@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { 
   ChatCircleText, BookOpen, ArrowsLeftRight, Gift, 
   Megaphone, X, Users, BookmarkSimple, Books,
-  House, Activity
+  House, Activity, Heart
 } from "phosphor-react";
 import Shelf from "./tabs/Shelf";
 import { db } from "./firebase";
@@ -97,7 +97,8 @@ export default function Home({ users }) {
       const story = { 
         type: showStoryInput.label, 
         text: storyText,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        reactions: { hearts: [] }
       };
       
       // Get the user ID to use for Firestore
@@ -170,6 +171,62 @@ export default function Home({ users }) {
         ? prev.filter(id => id !== userId) 
         : [...prev, userId]
     );
+  };
+  
+  // Handle heart reaction on a story
+  const handleHeartReaction = async (e, user, story) => {
+    e.stopPropagation(); // Prevent story expansion when clicking heart
+    
+    if (!currentUser) return; // Must be logged in to react
+    
+    setLoading(true);
+    try {
+      // Get the current user ID
+      const currentUserId = currentUser.uid || currentUser.username;
+      
+      // Check if story has reactions field, if not initialize it
+      const reactions = story.reactions || { hearts: [] };
+      
+      // Check if user already hearted this story
+      const hasHearted = reactions.hearts.includes(currentUserId);
+      
+      // Update the hearts array
+      const updatedHearts = hasHearted
+        ? reactions.hearts.filter(id => id !== currentUserId) // Remove heart
+        : [...reactions.hearts, currentUserId]; // Add heart
+      
+      // Create updated story object
+      const updatedStory = {
+        ...story,
+        reactions: { ...reactions, hearts: updatedHearts }
+      };
+      
+      // Update the story in the user's stories array
+      const updatedStories = user.stories.map(s => 
+        s.timestamp === story.timestamp ? updatedStory : s
+      );
+      
+      // Update Firestore
+      const userRef = doc(db, "users", user.uid || user.username);
+      await updateDoc(userRef, { stories: updatedStories });
+      
+      // Update local state
+      const updatedUsers = users.map(u => {
+        if ((u.uid && u.uid === user.uid) || (u.username && u.username === user.username)) {
+          return { ...u, stories: updatedStories };
+        }
+        return u;
+      });
+      
+      // Update the users state in the parent component
+      if (typeof window.updateUsers === 'function') {
+        window.updateUsers(updatedUsers);
+      }
+    } catch (err) {
+      console.error("Error updating reaction:", err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Define the tabs
@@ -342,17 +399,36 @@ export default function Home({ users }) {
                           </div>
                           <div className="relative min-h-[80px]">
                             <p className={`text-gray-300 ${expandedStories.includes(user.uid || user.username) ? '' : 'line-clamp-4'}`}>"{story.text}"</p>
-                            {story.text.length > 150 && (
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleExpandStory(user.uid || user.username);
-                                }}
-                                className="text-xs text-purple-400 hover:text-purple-300 mt-1 flex items-center"
+                            <div className="flex justify-between items-center mt-2">
+                              <div className="flex items-center">
+                                {story.text.length > 150 && (
+                                  <button 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleExpandStory(user.uid || user.username);
+                                    }}
+                                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center mr-3"
+                                  >
+                                    {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
+                                  </button>
+                                )}
+                              </div>
+                              <button
+                                onClick={(e) => handleHeartReaction(e, user, story)}
+                                className="flex items-center gap-1 text-xs"
                               >
-                                {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
+                                <Heart 
+                                  size={16} 
+                                  weight={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                                  className={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                    ? "text-red-500" 
+                                    : "text-gray-400 hover:text-red-500"} 
+                                />
+                                <span className="text-gray-400">
+                                  {story.reactions?.hearts?.length || 0}
+                                </span>
                               </button>
-                            )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -502,17 +578,36 @@ export default function Home({ users }) {
                       </div>
                       <div className="relative min-h-[120px]">
                         <p className={`text-gray-300 ${expandedStories.includes(user.uid || user.username) ? '' : 'line-clamp-6'}`}>"{story.text}"</p>
-                        {story.text.length > 150 && (
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              toggleExpandStory(user.uid || user.username);
-                            }}
-                            className="text-xs text-purple-400 hover:text-purple-300 mt-1 flex items-center"
+                        <div className="flex justify-between items-center mt-2">
+                          <div className="flex items-center">
+                            {story.text.length > 150 && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleExpandStory(user.uid || user.username);
+                                }}
+                                className="text-xs text-purple-400 hover:text-purple-300 flex items-center mr-3"
+                              >
+                                {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
+                              </button>
+                            )}
+                          </div>
+                          <button
+                            onClick={(e) => handleHeartReaction(e, user, story)}
+                            className="flex items-center gap-1 text-xs"
                           >
-                            {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
+                            <Heart 
+                              size={16} 
+                              weight={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                              className={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                ? "text-red-500" 
+                                : "text-gray-400 hover:text-red-500"} 
+                            />
+                            <span className="text-gray-400">
+                              {story.reactions?.hearts?.length || 0}
+                            </span>
                           </button>
-                        )}
+                        </div>
                       </div>
                     </div>
                   );
