@@ -18,7 +18,9 @@ const Shelf = ({ books, title }) => {
   // Update books per row based on screen size
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 640) {
+      if (window.innerWidth < 480) {
+        setBooksPerRow(3); // Small mobile: 3 books per row
+      } else if (window.innerWidth < 640) {
         setBooksPerRow(4); // Mobile: 4 books per row
       } else {
         setBooksPerRow(6); // Tablet/Desktop: 6 books per row
@@ -50,7 +52,7 @@ const Shelf = ({ books, title }) => {
               alt="Wooden shelf"
               className="absolute inset-0 w-full h-full object-cover z-0"
             />
-            <div className="relative z-10 flex justify-start items-end gap-2 sm:gap-4 h-full px-4 sm:px-6">
+            <div className="relative z-10 flex justify-start items-end gap-1 xs:gap-2 sm:gap-4 h-full px-2 sm:px-4 md:px-6">
               {row.map(book => (
                 <BookCard key={book.id} book={book} />
               ))}

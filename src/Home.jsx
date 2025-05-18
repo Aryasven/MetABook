@@ -89,9 +89,9 @@ export default function Home({ users }) {
   const usersWithStories = users.filter(user => user.stories?.[0]?.text);
 
   return (
-    <div className="max-w-6xl mx-auto p-6 space-y-10">
+    <div className="max-w-6xl mx-0 sm:mx-auto p-1 sm:p-4 md:p-6 space-y-6 sm:space-y-8 md:space-y-10">
       {/* Welcome Section */}
-      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-6 shadow-lg border border-gray-700">
+      <div className="bg-gradient-to-r from-gray-900 to-gray-800 rounded-xl p-2 sm:p-4 md:p-6 shadow-lg border border-gray-700">
         <div className="flex items-center gap-4 mb-4">
           <div className="bg-purple-600 p-3 rounded-full">
             <Books size={24} weight="bold" />
@@ -253,7 +253,7 @@ export default function Home({ users }) {
                 <div
                   key={user.username || user.uid}
                   onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                  className="w-[95vw] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                  className="w-[98vw] sm:w-[450px] md:w-[500px] rounded-xl shadow-lg p-2 sm:p-4 bg-gray-800 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                 >
                   <div className="flex items-center gap-2 mb-3">
                     <Users size={18} className="text-purple-400" />
