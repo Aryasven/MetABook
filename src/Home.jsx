@@ -175,9 +175,9 @@ export default function Home({ users }) {
     );
   };
   
-  // Handle heart reaction on a story
-  const handleHeartReaction = async (e, user, story) => {
-    e.stopPropagation(); // Prevent story expansion when clicking heart
+  // Handle heart reaction on a story or shelf
+  const handleHeartReaction = async (e, user, item, itemType = 'story') => {
+    e.stopPropagation(); // Prevent expansion when clicking heart
     
     if (!currentUser) return; // Must be logged in to react
     
@@ -186,10 +186,10 @@ export default function Home({ users }) {
       // Get the current user ID
       const currentUserId = currentUser.uid || currentUser.username;
       
-      // Check if story has reactions field, if not initialize it
-      const reactions = story.reactions || { hearts: [] };
+      // Check if item has reactions field, if not initialize it
+      const reactions = item.reactions || { hearts: [] };
       
-      // Check if user already hearted this story
+      // Check if user already hearted this item
       const hasHearted = reactions.hearts.includes(currentUserId);
       
       // Update the hearts array
@@ -197,31 +197,52 @@ export default function Home({ users }) {
         ? reactions.hearts.filter(id => id !== currentUserId) // Remove heart
         : [...reactions.hearts, currentUserId]; // Add heart
       
-      // Create updated story object
-      const updatedStory = {
-        ...story,
+      // Create updated item object
+      const updatedItem = {
+        ...item,
         reactions: { ...reactions, hearts: updatedHearts }
       };
       
-      // Update the story in the user's stories array
-      const updatedStories = user.stories.map(s => 
-        s.timestamp === story.timestamp ? updatedStory : s
-      );
+      let updatedUsers;
       
-      // Update Firestore
-      const userRef = doc(db, "users", user.uid || user.username);
-      await updateDoc(userRef, { stories: updatedStories });
-      
-      // Update local state
-      const updatedUsers = users.map(u => {
-        if ((u.uid && u.uid === user.uid) || (u.username && u.username === user.username)) {
-          return { ...u, stories: updatedStories };
-        }
-        return u;
-      });
+      if (itemType === 'story') {
+        // Update the story in the user's stories array
+        const updatedStories = user.stories.map(s => 
+          s.timestamp === item.timestamp ? updatedItem : s
+        );
+        
+        // Update Firestore
+        const userRef = doc(db, "users", user.uid || user.username);
+        await updateDoc(userRef, { stories: updatedStories });
+        
+        // Update local state
+        updatedUsers = users.map(u => {
+          if ((u.uid && u.uid === user.uid) || (u.username && u.username === user.username)) {
+            return { ...u, stories: updatedStories };
+          }
+          return u;
+        });
+      } else if (itemType === 'shelf') {
+        // Update the shelf in the user's shelves array
+        const updatedShelves = user.shelves.map(s => 
+          s.id === item.id ? updatedItem : s
+        );
+        
+        // Update Firestore
+        const userRef = doc(db, "users", user.uid || user.username);
+        await updateDoc(userRef, { shelves: updatedShelves });
+        
+        // Update local state
+        updatedUsers = users.map(u => {
+          if ((u.uid && u.uid === user.uid) || (u.username && u.username === user.username)) {
+            return { ...u, shelves: updatedShelves };
+          }
+          return u;
+        });
+      }
       
       // Update the users state in the parent component
-      if (typeof window.updateUsers === 'function') {
+      if (typeof window.updateUsers === 'function' && updatedUsers) {
         window.updateUsers(updatedUsers);
       }
     } catch (err) {
@@ -235,8 +256,7 @@ export default function Home({ users }) {
   const tabs = [
     { id: "feed", label: "Feed", icon: House },
     { id: "stories", label: "Stories", icon: ChatCircleText },
-    { id: "shelves", label: "Shelves", icon: BookmarkSimple },
-    { id: "activity", label: "Activity", icon: Activity }
+    { id: "shelves", label: "Shelves", icon: BookmarkSimple }
   ];
 
   return (
@@ -357,184 +377,174 @@ export default function Home({ users }) {
 
       {/* Tab Content */}
       <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-md rounded-xl p-6 border border-gray-700 shadow-lg">
-        {/* Feed Tab - Shows all content */}
+        {/* Feed Tab - Shows all recent activity */}
         {activeTab === "feed" && (
           <div className="space-y-8">
-            {/* Stories Section */}
+            {/* Recent Activity Feed */}
             <div>
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <ChatCircleText size={22} className="text-purple-400" />
-                  <h2 className="text-xl font-bold">Community Stories</h2>
+                  <Activity size={22} className="text-purple-400" />
+                  <h2 className="text-xl font-bold">Recent Activity</h2>
                 </div>
                 <button 
                   onClick={() => setShowStoryInput(featureMap[0])}
                   className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
                 >
-                  Share your story
+                  Share something
                 </button>
               </div>
               
-              <div className="overflow-x-auto pb-2 hide-scrollbar">
-                <div className="flex space-x-4 min-w-max">
-                  {usersWithStories.length > 0 ? (
-                    usersWithStories.slice(0, 3).map(user => {
-                      const story = user.stories[0];
-                      const typeMatch = featureMap.find(f => f.label === story.type);
-                      const Icon = typeMatch?.icon || ChatCircleText;
-                      const colorClass = typeMatch?.lightColor || "text-gray-400";
-                      
-                      return (
-                        <div
-                          key={user.username || user.uid}
-                          className="min-w-[380px] max-w-md rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
-                          onClick={() => toggleExpandStory(user.uid || user.username)}
-                        >
-                          <div className="flex items-center gap-2 mb-2">
-                            <div className="bg-gray-700 p-1.5 rounded-full">
-                              <Icon size={16} className={colorClass} />
-                            </div>
-                            <div>
-                              <span className="font-semibold block">{user.name || user.username}</span>
-                              <span className="text-xs text-gray-400">{typeMatch?.label || "Shared a story"}</span>
-                            </div>
+              <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
+              <div className="space-y-4">
+                {/* Combined activity feed - stories and shelves together */}
+                {[
+                  ...usersWithStories.map(user => ({
+                    type: 'story',
+                    user,
+                    data: user.stories[0],
+                    timestamp: user.stories[0].timestamp
+                  })),
+                  ...users.filter(user => user.shelves?.length > 0)
+                    .map(user => ({
+                      type: 'shelf',
+                      user,
+                      data: user.shelves[0],
+                      timestamp: user.shelves[0]?.updatedAt || new Date().toISOString() // Fallback timestamp
+                    }))
+                ]
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .map((item, index) => {
+                  if (item.type === 'story') {
+                    const user = item.user;
+                    const story = item.data;
+                    const typeMatch = featureMap.find(f => f.label === story.type);
+                    const Icon = typeMatch?.icon || ChatCircleText;
+                    const colorClass = typeMatch?.lightColor || "text-gray-400";
+                    
+                    return (
+                      <div
+                        key={`story-${user.username || user.uid}-${index}`}
+                        className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                        onClick={() => toggleExpandStory(user.uid || user.username)}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="bg-gray-700 p-1.5 rounded-full">
+                            <Icon size={16} className={colorClass} />
                           </div>
-                          <div className="relative min-h-[80px]">
-                            <p className={`text-gray-300 ${expandedStories.includes(user.uid || user.username) ? '' : 'line-clamp-4'}`}>"{story.text}"</p>
-                            <div className="flex justify-between items-center mt-2">
-                              <div className="flex items-center">
-                                {story.text.length > 150 && (
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleExpandStory(user.uid || user.username);
-                                    }}
-                                    className="text-xs text-purple-400 hover:text-purple-300 flex items-center mr-3"
-                                  >
-                                    {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
-                                  </button>
-                                )}
-                              </div>
-                              <button
-                                onClick={(e) => handleHeartReaction(e, user, story)}
-                                className="flex items-center gap-1 text-xs"
-                              >
-                                <Heart 
-                                  size={16} 
-                                  weight={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
-                                  className={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
-                                    ? "text-red-500" 
-                                    : "text-gray-400 hover:text-red-500"} 
-                                />
-                                <span className="text-gray-400">
-                                  {story.reactions?.hearts?.length || 0}
-                                </span>
-                              </button>
-                            </div>
+                          <div>
+                            <span className="font-semibold block">{user.name || user.username}</span>
+                            <span className="text-xs text-gray-400">{typeMatch?.label || "Shared a story"}</span>
                           </div>
                         </div>
-                      );
-                    })
-                  ) : (
-                    <div className="flex items-center justify-center w-full py-8 text-gray-400">
-                      <div className="text-center">
-                        <ChatCircleText size={32} className="mx-auto mb-2 text-gray-600" />
-                        <p>No stories shared yet.</p>
-                        <button
-                          onClick={() => setShowStoryInput(featureMap[0])}
-                          className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
-                        >
-                          Be the first to share!
-                        </button>
+                        <div className="relative min-h-[80px]">
+                          <p className={`text-gray-300 ${expandedStories.includes(user.uid || user.username) ? '' : 'line-clamp-4'}`}>"{story.text}"</p>
+                          <div className="flex justify-between items-center mt-2">
+                            <div className="flex items-center">
+                              {story.text.length > 150 && (
+                                <button 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    toggleExpandStory(user.uid || user.username);
+                                  }}
+                                  className="text-xs text-purple-400 hover:text-purple-300 flex items-center mr-3"
+                                >
+                                  {expandedStories.includes(user.uid || user.username) ? 'Show less' : 'Read more'}
+                                </button>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => handleHeartReaction(e, user, story, 'story')}
+                              className="flex items-center gap-1 text-xs"
+                            >
+                              <Heart 
+                                size={16} 
+                                weight={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                                className={story.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                  ? "text-red-500" 
+                                  : "text-gray-400 hover:text-red-500"} 
+                              />
+                              <span className="text-gray-400">
+                                {story.reactions?.hearts?.length || 0}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  )}
-                  {usersWithStories.length > 3 && (
-                    <div className="flex items-center justify-center min-w-[100px]">
-                      <button 
-                        onClick={() => setActiveTab("stories")}
-                        className="text-purple-400 hover:text-purple-300"
-                      >
-                        View all →
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-            
-            {/* Shelves Section */}
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <BookmarkSimple size={22} className="text-purple-400" />
-                  <h2 className="text-xl font-bold">Community Bookshelves</h2>
-                </div>
-                <button 
-                  onClick={() => navigate("/tabs/add-books")}
-                  className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
-                >
-                  Manage your shelves
-                </button>
-              </div>
-              
-              <div className="overflow-x-auto pb-1 sm:pb-2 -mx-1 hide-scrollbar">
-                <div className="flex space-x-2 sm:space-x-6 min-w-max">
-                  {users.filter(user => user.shelves?.length > 0).length > 0 ? (
-                    users.filter(user => user.shelves?.length > 0).slice(0, 2).map(user => (
+                    );
+                  } else {
+                    // Shelf item
+                    const user = item.user;
+                    const shelf = item.data;
+                    
+                    return (
                       <div
-                        key={user.username || user.uid}
+                        key={`shelf-${user.username || user.uid}-${index}`}
                         onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                        className="inline-block rounded-xl shadow-lg p-1 sm:p-4 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                        className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-2 mb-3">
-                          <Users size={18} className="text-purple-400" />
-                          <span className="font-semibold">{user.name || user.username}'s Shelves</span>
+                          <div className="bg-gray-700 p-1.5 rounded-full">
+                            <BookmarkSimple size={16} className="text-purple-400" />
+                          </div>
+                          <div>
+                            <span className="font-semibold block">{user.name || user.username}</span>
+                            <span className="text-xs text-gray-400">Updated their bookshelf</span>
+                          </div>
                         </div>
                         
-                        {user.shelves && user.shelves.length > 0 ? (
-                          <div className="space-y-6 md:space-y-8">
-                            {user.shelves.map(shelf => (
-                              <div key={shelf.id} className="shelf-container">
+                        {shelf && (
+                          <div className="overflow-x-auto pb-2 hide-scrollbar">
+                            <div className="space-y-4">
+                              <div className="shelf-container">
                                 <h4 className="text-sm font-medium text-gray-300 mb-2">{shelf.name}</h4>
                                 <Shelf
-                                  books={shelf.books || []}
-                                  title={null} // We already show the title above
+                                  books={shelf.books?.slice(0, 5) || []}
+                                  title={null}
                                 />
+                                <div className="flex justify-end mt-2">
+                                  <button
+                                    onClick={(e) => handleHeartReaction(e, user, shelf, 'shelf')}
+                                    className="flex items-center gap-1 text-xs"
+                                  >
+                                    <Heart 
+                                      size={16} 
+                                      weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                                      className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                        ? "text-red-500" 
+                                        : "text-gray-400 hover:text-red-500"} 
+                                    />
+                                    <span className="text-gray-400">
+                                      {shelf.reactions?.hearts?.length || 0}
+                                    </span>
+                                  </button>
+                                </div>
                               </div>
-                            ))}
+                            </div>
                           </div>
-                        ) : (
-                          <p className="text-gray-400 italic">No shelves available</p>
                         )}
                       </div>
-                    ))
-                  ) : (
-                    <div className="flex items-center justify-center w-full py-8 text-gray-400">
-                      <div className="text-center">
-                        <BookmarkSimple size={32} className="mx-auto mb-2 text-gray-600" />
-                        <p>No bookshelves available yet.</p>
-                        <button
-                          onClick={() => navigate("/tabs/add-books")}
-                          className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
-                        >
-                          Create your bookshelf
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {users.filter(user => user.shelves?.length > 0).length > 2 && (
-                    <div className="flex items-center justify-center min-w-[100px]">
-                      <button 
-                        onClick={() => setActiveTab("shelves")}
-                        className="text-purple-400 hover:text-purple-300"
+                    );
+                  }
+                })}
+                
+                {/* Empty state */}
+                {usersWithStories.length === 0 && users.filter(user => user.shelves?.length > 0).length === 0 && (
+                  <div className="flex items-center justify-center w-full py-8 text-gray-400">
+                    <div className="text-center">
+                      <Activity size={32} className="mx-auto mb-2 text-gray-600" />
+                      <p>No recent activity to show.</p>
+                      <button
+                        onClick={() => setShowStoryInput(featureMap[0])}
+                        className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
                       >
-                        View all →
+                        Be the first to share!
                       </button>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
+            </div>
             </div>
           </div>
         )}
@@ -632,7 +642,7 @@ export default function Home({ users }) {
           </div>
         )}
         
-        {/* Shelves Tab - Responsive scrolling for shelves */}
+        {/* Shelves Tab - Responsive grid layout with vertical scrolling */}
         {activeTab === "shelves" && (
           <div>
             <div className="flex items-center justify-between mb-4">
@@ -648,11 +658,11 @@ export default function Home({ users }) {
               </button>
             </div>
             
-            {/* Desktop: horizontal scrolling, Mobile: vertical scrolling */}
-            <div className="max-h-[75vh] overflow-y-auto md:overflow-y-hidden md:overflow-x-auto pr-2 hide-scrollbar">
-              <div className="md:flex md:space-x-6 space-y-4 md:space-y-0">
-                {users.filter(user => user.shelves?.some(shelf => shelf.books?.length > 0)).length > 0 ? (
-                  users.filter(user => user.shelves?.some(shelf => shelf.books?.length > 0)).map(user => {
+            {/* Vertical scrolling with responsive grid */}
+            <div className="max-h-[75vh] overflow-y-auto pr-2 hide-scrollbar">
+              {users.filter(user => user.shelves?.some(shelf => shelf.books?.length > 0)).length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {users.filter(user => user.shelves?.some(shelf => shelf.books?.length > 0)).map(user => {
                     // Filter out empty shelves
                     const nonEmptyShelves = user.shelves.filter(shelf => shelf.books?.length > 0);
                     
@@ -660,65 +670,66 @@ export default function Home({ users }) {
                       <div
                         key={user.username || user.uid}
                         onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
-                        className="inline-block rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                        className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer h-full"
                       >
                         <div className="flex items-center gap-2 mb-3">
                           <Users size={18} className="text-purple-400" />
                           <span className="font-semibold">{user.name || user.username}'s Shelves</span>
                         </div>
                         
-                        <div className="max-h-[400px] overflow-y-auto pr-2 hide-scrollbar space-y-6">
+                        <div className="space-y-6 w-full overflow-hidden">
                           {nonEmptyShelves.map(shelf => (
-                            <div key={shelf.id} className="shelf-container">
+                            <div key={shelf.id} className="shelf-container w-full">
                               <h4 className="text-sm font-medium text-gray-300 mb-2">{shelf.name}</h4>
-                              <Shelf
-                                books={shelf.books || []}
-                                title={null} // We already show the title above
-                              />
+                              <div className="w-full overflow-x-auto">
+                                <Shelf
+                                  books={shelf.books || []}
+                                  title={null} // We already show the title above
+                                />
+                              </div>
+                              <div className="flex justify-end mt-2">
+                                <button
+                                  onClick={(e) => handleHeartReaction(e, user, shelf, 'shelf')}
+                                  className="flex items-center gap-1 text-xs"
+                                >
+                                  <Heart 
+                                    size={16} 
+                                    weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                                    className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                      ? "text-red-500" 
+                                      : "text-gray-400 hover:text-red-500"} 
+                                  />
+                                  <span className="text-gray-400">
+                                    {shelf.reactions?.hearts?.length || 0}
+                                  </span>
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
                       </div>
                     );
-                  })
-                ) : (
-                  <div className="flex items-center justify-center w-full py-8 text-gray-400">
-                    <div className="text-center">
-                      <BookmarkSimple size={32} className="mx-auto mb-2 text-gray-600" />
-                      <p>No bookshelves available yet.</p>
-                      <button
-                        onClick={() => navigate("/tabs/add-books")}
-                        className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
-                      >
-                        Create your bookshelf
-                      </button>
-                    </div>
+                  })}
+                </div>
+              ) : (
+                <div className="flex items-center justify-center w-full py-8 text-gray-400">
+                  <div className="text-center">
+                    <BookmarkSimple size={32} className="mx-auto mb-2 text-gray-600" />
+                    <p>No bookshelves available yet.</p>
+                    <button
+                      onClick={() => navigate("/tabs/add-books")}
+                      className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
+                    >
+                      Create your bookshelf
+                    </button>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         )}
         
-        {/* Activity Tab - Recent activity */}
-        {activeTab === "activity" && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Activity size={22} className="text-purple-400" />
-                <h2 className="text-xl font-bold">Recent Activity</h2>
-              </div>
-            </div>
-            
-            <div className="flex items-center justify-center w-full py-12 text-gray-400">
-              <div className="text-center">
-                <Activity size={32} className="mx-auto mb-2 text-gray-600" />
-                <p>Activity feed coming soon!</p>
-                <p className="text-sm mt-2">Track your friends' reading progress and interactions.</p>
-              </div>
-            </div>
-          </div>
-        )}
+
       </div>
       
       {/* Add CSS classes for styling */}

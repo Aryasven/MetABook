@@ -50,7 +50,7 @@ const Shelf = ({ books, title }) => {
   const visibleRows = expanded || !needsExpansion ? rows : rows.slice(0, 2);
 
   return (
-    <div className="w-fit">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-2">
         {title && <h3 className="text-lg font-semibold text-left">{title}</h3>}
         {needsExpansion && (
