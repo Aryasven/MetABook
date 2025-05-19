@@ -124,7 +124,16 @@ export default function Home({ users }) {
       
       // Update Firestore
       const userRef = doc(db, "users", userId);
-      await updateDoc(userRef, { stories: updatedStories });
+      
+      // If this is a new user without a createdAt timestamp, add one
+      if (!userToUpdate?.createdAt) {
+        await updateDoc(userRef, { 
+          stories: updatedStories,
+          createdAt: new Date().toISOString() 
+        });
+      } else {
+        await updateDoc(userRef, { stories: updatedStories });
+      }
 
       // Create a local copy of the updated user data
       const updatedUser = {
@@ -215,6 +224,38 @@ export default function Home({ users }) {
         const userRef = doc(db, "users", user.uid || user.username);
         await updateDoc(userRef, { stories: updatedStories });
         
+        // Create notification for the story owner if this is a new heart
+        if (!hasHearted && user.uid !== currentUserId) {
+          // Get the target user's existing notifications
+          const targetUserRef = doc(db, "users", user.uid);
+          const targetUserSnap = await getDoc(targetUserRef);
+          
+          if (targetUserSnap.exists()) {
+            const targetUserData = targetUserSnap.data();
+            const notifications = targetUserData.notifications || [];
+            
+            // Add new notification
+            const newNotification = {
+              id: `like-story-${Date.now()}`,
+              type: "story_like",
+              user: {
+                uid: currentUserId,
+                name: currentUser.name || currentUser.displayName,
+                email: currentUser.email
+              },
+              message: "liked your story",
+              timestamp: new Date().toISOString(),
+              read: false,
+              storyId: item.timestamp // Reference to identify which story was liked
+            };
+            
+            // Update notifications in Firestore
+            await updateDoc(targetUserRef, { 
+              notifications: [newNotification, ...notifications].slice(0, 50) // Keep only the 50 most recent
+            });
+          }
+        }
+        
         // Update local state
         updatedUsers = users.map(u => {
           if ((u.uid && u.uid === user.uid) || (u.username && u.username === user.username)) {
@@ -231,6 +272,38 @@ export default function Home({ users }) {
         // Update Firestore
         const userRef = doc(db, "users", user.uid || user.username);
         await updateDoc(userRef, { shelves: updatedShelves });
+        
+        // Create notification for the shelf owner if this is a new heart
+        if (!hasHearted && user.uid !== currentUserId) {
+          // Get the target user's existing notifications
+          const targetUserRef = doc(db, "users", user.uid);
+          const targetUserSnap = await getDoc(targetUserRef);
+          
+          if (targetUserSnap.exists()) {
+            const targetUserData = targetUserSnap.data();
+            const notifications = targetUserData.notifications || [];
+            
+            // Add new notification
+            const newNotification = {
+              id: `like-shelf-${Date.now()}`,
+              type: "shelf_like",
+              user: {
+                uid: currentUserId,
+                name: currentUser.name || currentUser.displayName,
+                email: currentUser.email
+              },
+              message: `liked your "${item.name}" shelf`,
+              timestamp: new Date().toISOString(),
+              read: false,
+              shelfId: item.id // Reference to identify which shelf was liked
+            };
+            
+            // Update notifications in Firestore
+            await updateDoc(targetUserRef, { 
+              notifications: [newNotification, ...notifications].slice(0, 50) // Keep only the 50 most recent
+            });
+          }
+        }
         
         // Update local state
         updatedUsers = users.map(u => {
@@ -277,22 +350,34 @@ export default function Home({ users }) {
           
           {/* Feature Cards - Better sized */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-            {featureMap.map(feature => (
-              <button
-                key={feature.label}
-                onClick={() => {
-                  if (feature.label === "Build My Library") {
-                    navigate("/tabs/add-books");
-                  } else {
-                    setShowStoryInput(feature);
-                  }
-                }}
-                className={`flex items-center gap-2 p-3 bg-gradient-to-br ${feature.color} rounded-lg shadow hover:shadow-lg transition-all`}
-              >
-                <feature.icon size={24} weight="duotone" />
-                <span className="text-sm font-medium">{feature.label}</span>
-              </button>
-            ))}
+            {featureMap.map(feature => {
+              // Check if user has any shelves with books
+              const hasBooks = currentUser?.shelves?.some(shelf => shelf.books?.length > 0);
+              const isLibraryFeature = feature.label === "Build My Library";
+              
+              return (
+                <button
+                  key={feature.label}
+                  onClick={() => {
+                    if (isLibraryFeature) {
+                      navigate("/tabs/add-books");
+                    } else {
+                      setShowStoryInput(feature);
+                    }
+                  }}
+                  className={`flex flex-col items-center justify-center gap-2 p-4 bg-gradient-to-br ${feature.color} rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all relative
+                    ${isLibraryFeature && !hasBooks ? 'animate-pulse ring-2 ring-yellow-400' : ''}`}
+                >
+                  <feature.icon size={28} weight="duotone" className="mb-1" />
+                  <span className="text-sm font-medium text-center">{feature.label}</span>
+                  {isLibraryFeature && !hasBooks && (
+                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs px-2 py-0.5 rounded-full font-bold">
+                      New!
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
         
@@ -397,20 +482,35 @@ export default function Home({ users }) {
               
               <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
               <div className="space-y-4">
-                {/* Combined activity feed - stories and shelves together */}
+                {/* Combined activity feed with all types of updates */}
                 {[
+                  // Stories
                   ...usersWithStories.map(user => ({
                     type: 'story',
                     user,
                     data: user.stories[0],
                     timestamp: user.stories[0].timestamp
                   })),
-                  ...users.filter(user => user.shelves?.length > 0)
-                    .map(user => ({
-                      type: 'shelf',
+                  
+                  // All shelf updates - show each shelf as an activity
+                  ...users.flatMap(user => {
+                    if (!user.shelves) return [];
+                    
+                    return user.shelves.map(shelf => ({
+                      type: 'shelf_update',
                       user,
-                      data: user.shelves[0],
-                      timestamp: user.shelves[0]?.updatedAt || new Date().toISOString() // Fallback timestamp
+                      data: shelf,
+                      timestamp: shelf.updatedAt || new Date().toISOString()
+                    }));
+                  }),
+                  
+                  // New users
+                  ...users.filter(user => user.createdAt)
+                    .map(user => ({
+                      type: 'new_user',
+                      user,
+                      data: null,
+                      timestamp: user.createdAt
                     }))
                 ]
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
@@ -472,24 +572,24 @@ export default function Home({ users }) {
                         </div>
                       </div>
                     );
-                  } else {
-                    // Shelf item
+                  } else if (item.type === 'shelf_update') {
+                    // Shelf update
                     const user = item.user;
                     const shelf = item.data;
                     
                     return (
                       <div
-                        key={`shelf-${user.username || user.uid}-${index}`}
+                        key={`shelf-${user.username || user.uid}-${shelf.id || index}`}
                         onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
                         className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                       >
                         <div className="flex items-center gap-2 mb-3">
-                          <div className="bg-gray-700 p-1.5 rounded-full">
-                            <BookmarkSimple size={16} className="text-purple-400" />
+                          <div className="bg-blue-700/30 p-1.5 rounded-full">
+                            <BookmarkSimple size={16} className="text-blue-400" />
                           </div>
                           <div>
                             <span className="font-semibold block">{user.name || user.username}</span>
-                            <span className="text-xs text-gray-400">Updated their bookshelf</span>
+                            <span className="text-xs text-gray-400">updated their "{shelf.name}" shelf</span>
                           </div>
                         </div>
                         
@@ -497,7 +597,9 @@ export default function Home({ users }) {
                           <div className="overflow-x-auto pb-2 hide-scrollbar">
                             <div className="space-y-4">
                               <div className="shelf-container">
-                                <h4 className="text-sm font-medium text-gray-300 mb-2">{shelf.name}</h4>
+                                <h4 className="text-sm font-medium text-gray-300 mb-2">
+                                  {shelf.books?.length || 0} {shelf.books?.length === 1 ? 'book' : 'books'} on this shelf
+                                </h4>
                                 <Shelf
                                   books={shelf.books?.slice(0, 5) || []}
                                   title={null}
@@ -523,6 +625,34 @@ export default function Home({ users }) {
                             </div>
                           </div>
                         )}
+                      </div>
+                    );
+                  } else if (item.type === 'new_user') {
+                    // New user joined
+                    const user = item.user;
+                    const joinDate = new Date(item.timestamp);
+                    
+                    return (
+                      <div
+                        key={`new-user-${user.username || user.uid}-${index}`}
+                        className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
+                        onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
+                      >
+                        <div className="flex items-center gap-2 mb-3">
+                          <div className="bg-green-700/30 p-1.5 rounded-full">
+                            <UserPlus size={16} className="text-green-400" />
+                          </div>
+                          <div>
+                            <span className="font-semibold block">{user.name || user.username}</span>
+                            <span className="text-xs text-gray-400">joined MetABook</span>
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-300">
+                          Welcome our newest community member! Check out their profile.
+                        </p>
+                        <div className="text-xs text-gray-500 mt-2">
+                          {joinDate.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                        </div>
                       </div>
                     );
                   }

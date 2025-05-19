@@ -1,4 +1,4 @@
-// F// FindFriends.jsx
+// FindFriends.jsx
 import React, { useState, useEffect } from "react";
 import { GoogleAuthProvider, getAuth, signInWithPopup } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
@@ -54,7 +54,7 @@ export default function FindFriends() {
       }
     };
     fetchUsersAndRequests();
-  }, [currentUser]);
+  }, [currentUser, friends]);
 
   const handleGmailConnect = async () => {
     const provider = new GoogleAuthProvider();
@@ -218,6 +218,57 @@ export default function FindFriends() {
         )}
       </div>
 
+      {/* Friend Requests Section */}
+      {friendRequests.length > 0 && (
+        <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <UserPlus size={20} className="text-green-400" />
+            Friend Requests
+          </h2>
+          <ul className="space-y-3">
+            {friendRequests.map((request, index) => (
+              <li key={index} className="p-3 bg-gray-900 rounded-lg flex justify-between items-center">
+                <div>
+                  <span className="font-medium">{request.fromName}</span>
+                  <p className="text-sm text-gray-400">{request.fromEmail}</p>
+                </div>
+                <button
+                  onClick={() => acceptFriendRequest(request)}
+                  className="flex items-center gap-1 text-sm px-3 py-1 rounded-lg bg-green-600 hover:bg-green-700 transition-colors"
+                >
+                  <Check size={16} />
+                  Accept
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Sent Requests Section */}
+      {sentRequests.length > 0 && (
+        <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+            <UserSwitch size={20} className="text-yellow-400" />
+            Pending Requests
+          </h2>
+          <ul className="space-y-3">
+            {sentRequests.map((request, index) => (
+              <li key={index} className="p-3 bg-gray-900 rounded-lg flex justify-between items-center">
+                <div>
+                  <span className="font-medium">{request.toName}</span>
+                  <p className="text-sm text-gray-400">{request.toEmail}</p>
+                </div>
+                <span className="px-3 py-1 bg-gray-700 text-gray-300 rounded-lg flex items-center gap-1 text-sm">
+                  <Check size={16} />
+                  Request Pending
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Contacts Section */}
       <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -271,33 +322,6 @@ export default function FindFriends() {
           </div>
         )}
       </div>
-
-      {/* Friend Requests */}
-      {friendRequests.length > 0 && (
-        <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
-          <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-            <EnvelopeSimple size={20} className="text-purple-400" />
-            Incoming Friend Requests
-          </h2>
-          <ul className="space-y-3">
-            {friendRequests.map((req, i) => (
-              <li key={i} className="p-4 bg-gray-900 rounded-lg flex justify-between items-center hover:bg-gray-850 transition-colors">
-                <div>
-                  <span className="font-medium">{req.fromName}</span>
-                  <p className="text-sm text-gray-400">{req.fromEmail}</p>
-                </div>
-                <button
-                  onClick={() => acceptFriendRequest(req)}
-                  className="flex items-center gap-1 text-sm bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition-colors"
-                >
-                  <Check size={16} weight="bold" />
-                  Accept
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       {/* Current Friends */}
       {friends.length > 0 && (

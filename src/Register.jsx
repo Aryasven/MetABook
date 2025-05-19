@@ -40,8 +40,8 @@ export default function Register() {
         ]
       });
 
-      // Navigate to AddBooksTab with shelves tab active
-      navigate("/tabs/add-books?tab=shelves");
+      // Navigate to Home page after registration
+      navigate("/");
     } catch (error) {
       alert(error.message);
     }

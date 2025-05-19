@@ -38,46 +38,37 @@ export default function Navbar() {
       if (!currentUser) return;
       
       try {
-        // In a real app, you would fetch actual notifications from Firestore
-        // For now, we'll create sample notifications
+        // Get the current user's data including friend requests
+        const userRef = doc(db, "users", currentUser.uid);
+        const userSnap = await getDoc(userRef);
         
-        // Get some users for the sample notifications
-        const snapshot = await getDocs(collection(db, "users"));
-        const users = snapshot.docs.map(doc => ({
-          uid: doc.id,
-          ...doc.data()
-        }));
-        
-        if (users.length > 0) {
-          const sampleNotifications = [
-            {
-              id: 1,
-              type: "friend_request",
-              user: users[0],
-              message: "sent you a friend request",
-              timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(), // 30 minutes ago
-              read: false
-            },
-            {
-              id: 2,
-              type: "shelf_update",
-              user: users.length > 1 ? users[1] : users[0],
-              message: "updated their bookshelf",
-              timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(), // 2 hours ago
-              read: false
-            },
-            {
-              id: 3,
-              type: "new_story",
-              user: users.length > 2 ? users[2] : users[0],
-              message: "shared a new story",
-              timestamp: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
-              read: true
-            }
-          ];
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          const friendRequests = userData.friendRequests || [];
+          const notifications = userData.notifications || [];
           
-          setNotifications(sampleNotifications);
-          setUnreadCount(sampleNotifications.filter(n => !n.read).length);
+          // Convert friend requests to notifications
+          const friendRequestNotifications = friendRequests.map((request, index) => ({
+            id: `fr-${index}`,
+            type: "friend_request",
+            user: {
+              uid: request.fromUid,
+              name: request.fromName,
+              email: request.fromEmail
+            },
+            message: "sent you a friend request",
+            timestamp: new Date().toISOString(), // We don't have timestamps in requests, use current time
+            read: false
+          }));
+          
+          // Combine friend requests with other notifications
+          const allNotifications = [...friendRequestNotifications, ...notifications];
+          
+          // Sort by timestamp, newest first
+          allNotifications.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+          
+          setNotifications(allNotifications);
+          setUnreadCount(allNotifications.filter(n => !n.read).length);
         }
       } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -85,7 +76,7 @@ export default function Navbar() {
     };
     
     fetchNotifications();
-  }, [currentUser]);
+  }, [currentUser, friendRequests]);
 
   // Close notifications when clicking outside
   useEffect(() => {
