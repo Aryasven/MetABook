@@ -1,191 +1,425 @@
 // ShelfView.jsx
-import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
-import { db } from "../firebase";
+import React, { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { 
+  BookmarkSimple, User, Heart, Books, ArrowLeft, 
+  ChatCircleText, UserPlus, UserMinus, Share
+} from "phosphor-react";
+import { useAuth } from "../useAuth";
 import Shelf from "./Shelf";
-import { Star, StarHalf, BookOpen, Calendar, User } from "phosphor-react";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { db } from "../firebase";
+import RecommendationRequest from "./RecommendationRequest";
 
-export default function ShelfView() {
-  const { username } = useParams(); // this could be UID or username
-  const [searchParams] = useSearchParams();
-  const [userData, setUserData] = useState(null);
-  const [notFound, setNotFound] = useState(false);
-  const [selectedBook, setSelectedBook] = useState(null);
+export default function ShelfView({ users }) {
+  const [shelf, setShelf] = useState(null);
+  const [shelfOwner, setShelfOwner] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [showRecommendModal, setShowRecommendModal] = useState(false);
   const navigate = useNavigate();
-  const name = searchParams.get("name") || "User";
-
+  const location = useLocation();
+  const { currentUser } = useAuth();
+  
+  // Parse URL parameters
+  const params = new URLSearchParams(location.search);
+  const shelfId = params.get("shelfId");
+  const userId = location.pathname.split("/").pop();
+  const showRecommend = params.get("recommend") === "true";
+  
+  // Fetch shelf and owner data
   useEffect(() => {
-    const fetchUserShelf = async () => {
-      try {
-        // First try direct lookup by document ID
-        const userDoc = doc(db, "users", username);
-        const snap = await getDoc(userDoc);
-        
-        if (snap.exists()) {
-          const data = snap.data();
-          setUserData(data);
-          
-          // Set the first book as selected by default
-          if (data.shelves?.length > 0 && data.shelves[0].books?.length > 0) {
-            setSelectedBook(data.shelves[0].books[0]);
-          }
-        } else {
-          console.error(`User not found with ID: ${username}`);
-          setNotFound(true);
+    const fetchShelfData = async () => {
+      if (!userId || !users.length) return;
+      
+      // Find the shelf owner
+      const owner = users.find(u => u.uid === userId || u.username === userId);
+      if (!owner) return;
+      
+      setShelfOwner(owner);
+      
+      // Find the specific shelf if shelfId is provided
+      if (shelfId && owner.shelves) {
+        const foundShelf = owner.shelves.find(s => s.id === shelfId);
+        if (foundShelf) {
+          setShelf({
+            ...foundShelf,
+            user: {
+              uid: owner.uid,
+              username: owner.username,
+              name: owner.name || owner.username,
+              email: owner.email
+            },
+            displayName: `${owner.name || owner.username}'s ${foundShelf.name}`
+          });
         }
-      } catch (err) {
-        console.error("Failed to load shelf:", err);
-        setNotFound(true);
+      } else if (owner.shelves && owner.shelves.length > 0) {
+        // Default to first shelf if no specific shelf requested
+        const defaultShelf = owner.shelves[0];
+        setShelf({
+          ...defaultShelf,
+          user: {
+            uid: owner.uid,
+            username: owner.username,
+            name: owner.name || owner.username,
+            email: owner.email
+          },
+          displayName: `${owner.name || owner.username}'s ${defaultShelf.name}`
+        });
+      }
+      
+      // Check if current user is following this user
+      if (currentUser && owner.followers) {
+        setIsFollowing(owner.followers.includes(currentUser.uid || currentUser.username));
       }
     };
-    fetchUserShelf();
-  }, [username]);
-
-  const handleBookClick = (book) => {
-    setSelectedBook(book);
-  };
-
-  // Custom BookCard component with click handler
-  const BookCard = ({ book }) => (
-    <div 
-      className={`w-24 h-36 bg-gray-800 rounded shadow flex items-center justify-center p-1 overflow-hidden cursor-pointer transition-all ${selectedBook?.id === book.id ? 'ring-2 ring-purple-500 scale-105' : 'hover:scale-105'}`}
-      onClick={() => handleBookClick(book)}
-    >
-      <img
-        src={book.volumeInfo?.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
-        alt={book.volumeInfo?.title}
-        className="h-full object-contain"
-        title={book.volumeInfo?.title}
-      />
-    </div>
-  );
-
-  // Custom Shelf component that uses our BookCard
-  const EnhancedShelf = ({ shelf }) => {
-    const books = shelf.books || [];
     
+    fetchShelfData();
+  }, [userId, shelfId, users, currentUser]);
+  
+  // Show recommendation modal if URL parameter is set
+  useEffect(() => {
+    if (showRecommend && shelf && shelfOwner) {
+      setShowRecommendModal(true);
+    }
+  }, [showRecommend, shelf, shelfOwner]);
+  
+  // Handle heart reaction
+  const handleHeartReaction = async (e) => {
+    e.stopPropagation();
+    if (!currentUser || !shelf) return;
+    
+    setLoading(true);
+    try {
+      const currentUserId = currentUser.uid || currentUser.username;
+      
+      // Check if item has reactions field, if not initialize it
+      const reactions = shelf.reactions || { hearts: [] };
+      
+      // Check if user already hearted this item
+      const hasHearted = reactions.hearts.includes(currentUserId);
+      
+      // Update the hearts array
+      const updatedHearts = hasHearted
+        ? reactions.hearts.filter(id => id !== currentUserId) // Remove heart
+        : [...reactions.hearts, currentUserId]; // Add heart
+      
+      // Create updated shelf object
+      const updatedShelf = {
+        ...shelf,
+        reactions: { ...reactions, hearts: updatedHearts }
+      };
+      
+      if (shelfOwner) {
+        // Update the shelf in the user's shelves array
+        const updatedShelves = shelfOwner.shelves.map(s => 
+          s.id === shelf.id ? { ...s, reactions: { ...reactions, hearts: updatedHearts } } : s
+        );
+        
+        // Update Firestore
+        const userRef = doc(db, "users", shelfOwner.uid || shelfOwner.username);
+        await updateDoc(userRef, { shelves: updatedShelves });
+        
+        // Create notification for the shelf owner if this is a new heart
+        if (!hasHearted && shelfOwner.uid !== currentUserId) {
+          // Get the target user's existing notifications
+          const targetUserRef = doc(db, "users", shelfOwner.uid);
+          const targetUserSnap = await getDoc(targetUserRef);
+          
+          if (targetUserSnap.exists()) {
+            const targetUserData = targetUserSnap.data();
+            const notifications = targetUserData.notifications || [];
+            
+            // Add new notification
+            const newNotification = {
+              id: `like-shelf-${Date.now()}`,
+              type: "shelf_like",
+              user: {
+                uid: currentUserId,
+                name: currentUser.name || currentUser.displayName,
+                email: currentUser.email
+              },
+              message: `liked your "${shelf.name}" shelf`,
+              timestamp: new Date().toISOString(),
+              read: false,
+              shelfId: shelf.id // Reference to identify which shelf was liked
+            };
+            
+            // Update notifications in Firestore
+            await updateDoc(targetUserRef, { 
+              notifications: [newNotification, ...notifications].slice(0, 50) // Keep only the 50 most recent
+            });
+          }
+        }
+        
+        // Update local state
+        setShelf(updatedShelf);
+        
+        // Update local state if window.updateUsers is available
+        const updatedUsers = users.map(u => {
+          if ((u.uid && u.uid === shelfOwner.uid) || (u.username && u.username === shelfOwner.username)) {
+            return { ...u, shelves: updatedShelves };
+          }
+          return u;
+        });
+        
+        if (typeof window.updateUsers === 'function') {
+          window.updateUsers(updatedUsers);
+        }
+      }
+    } catch (err) {
+      console.error("Error updating shelf reaction:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle follow/unfollow
+  const handleFollowToggle = async () => {
+    if (!currentUser || !shelfOwner) return;
+    
+    setLoading(true);
+    try {
+      const currentUserId = currentUser.uid || currentUser.username;
+      
+      // Get current followers list
+      const followers = shelfOwner.followers || [];
+      
+      // Update followers list
+      const updatedFollowers = isFollowing
+        ? followers.filter(id => id !== currentUserId) // Unfollow
+        : [...followers, currentUserId]; // Follow
+      
+      // Update Firestore
+      const userRef = doc(db, "users", shelfOwner.uid || shelfOwner.username);
+      await updateDoc(userRef, { followers: updatedFollowers });
+      
+      // Create notification for the shelf owner if this is a new follow
+      if (!isFollowing && shelfOwner.uid !== currentUserId) {
+        // Get the target user's existing notifications
+        const targetUserRef = doc(db, "users", shelfOwner.uid);
+        const targetUserSnap = await getDoc(targetUserRef);
+        
+        if (targetUserSnap.exists()) {
+          const targetUserData = targetUserSnap.data();
+          const notifications = targetUserData.notifications || [];
+          
+          // Add new notification
+          const newNotification = {
+            id: `follow-${Date.now()}`,
+            type: "follow",
+            user: {
+              uid: currentUserId,
+              name: currentUser.name || currentUser.displayName,
+              email: currentUser.email
+            },
+            message: "started following you",
+            timestamp: new Date().toISOString(),
+            read: false
+          };
+          
+          // Update notifications in Firestore
+          await updateDoc(targetUserRef, { 
+            notifications: [newNotification, ...notifications].slice(0, 50) // Keep only the 50 most recent
+          });
+        }
+      }
+      
+      // Update local state
+      setIsFollowing(!isFollowing);
+      
+      // Update local state if window.updateUsers is available
+      const updatedUsers = users.map(u => {
+        if ((u.uid && u.uid === shelfOwner.uid) || (u.username && u.username === shelfOwner.username)) {
+          return { ...u, followers: updatedFollowers };
+        }
+        return u;
+      });
+      
+      if (typeof window.updateUsers === 'function') {
+        window.updateUsers(updatedUsers);
+      }
+    } catch (err) {
+      console.error("Error updating follow status:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Handle share
+  const handleShare = () => {
+    if (!shelf) return;
+    
+    // Create share URL
+    const shareUrl = `${window.location.origin}/shelf/${shelfOwner.uid}?shelfId=${shelf.id}`;
+    
+    // Try to use Web Share API if available
+    if (navigator.share) {
+      navigator.share({
+        title: `${shelf.displayName} on MetABook`,
+        text: `Check out ${shelf.displayName} on MetABook!`,
+        url: shareUrl
+      }).catch(err => {
+        console.error("Error sharing:", err);
+        // Fallback to clipboard
+        copyToClipboard(shareUrl);
+      });
+    } else {
+      // Fallback to clipboard
+      copyToClipboard(shareUrl);
+    }
+  };
+  
+  // Helper function to copy to clipboard
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text).then(() => {
+      alert("Link copied to clipboard!");
+    }).catch(err => {
+      console.error("Could not copy text: ", err);
+    });
+  };
+  
+  // Loading state
+  if (!shelf || !shelfOwner) {
     return (
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-3 text-gray-200">{shelf.name}</h3>
-        <div className="flex flex-wrap gap-4">
-          {books.map(book => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
       </div>
     );
-  };
-
-  if (notFound)
-    return <div className="p-6 text-red-500">User "{name}" not found or no shelf available.</div>;
-
-  if (!userData)
-    return <div className="p-6 text-gray-500">Loading {name}'s shelf...</div>;
-
+  }
+  
   return (
-    <div className="p-6 bg-gray-900 min-h-screen">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-extrabold text-gray-200">{name}'s Bookshelves</h1>
-        <button
-          className="px-3 py-1 text-sm rounded-lg bg-violet-700 hover:bg-violet-600 text-white font-semibold shadow-md"
-          onClick={() => navigate(-1)}
-        >
-          ← Back
-        </button>
-      </div>
-
-      <div className="flex flex-col lg:flex-row gap-6">
-        {/* Left side - Shelves */}
-        <div className="lg:w-1/2 space-y-6 overflow-y-auto max-h-[75vh]">
-          {userData.shelves?.length > 0 ? (
-            userData.shelves.map((shelf) => (
-              <EnhancedShelf key={shelf.id} shelf={shelf} />
-            ))
-          ) : (
-            <p className="text-gray-400 italic">No shelves added yet.</p>
-          )}
-        </div>
-
-        {/* Right side - Book details */}
-        <div className="lg:w-1/2 bg-gray-800/50 rounded-xl p-6 border border-gray-700">
-          {selectedBook ? (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row gap-6">
-                {/* Book cover */}
-                <div className="flex-shrink-0 flex justify-center">
-                  <img
-                    src={selectedBook.volumeInfo?.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
-                    alt={selectedBook.volumeInfo?.title}
-                    className="h-64 object-contain rounded shadow-lg"
-                  />
-                </div>
-                
-                {/* Book info */}
-                <div className="flex-grow">
-                  <h2 className="text-2xl font-bold text-gray-100 mb-2">{selectedBook.volumeInfo?.title}</h2>
-                  
-                  {selectedBook.volumeInfo?.authors && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <User size={16} className="text-gray-400" />
-                      <p className="text-gray-300">{selectedBook.volumeInfo.authors.join(", ")}</p>
-                    </div>
-                  )}
-                  
-                  {selectedBook.volumeInfo?.publishedDate && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar size={16} className="text-gray-400" />
-                      <p className="text-gray-300">{selectedBook.volumeInfo.publishedDate}</p>
-                    </div>
-                  )}
-                  
-                  {selectedBook.volumeInfo?.pageCount && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <BookOpen size={16} className="text-gray-400" />
-                      <p className="text-gray-300">{selectedBook.volumeInfo.pageCount} pages</p>
-                    </div>
-                  )}
-                  
-                  {/* Rating */}
-                  {selectedBook.volumeInfo?.averageRating && (
-                    <div className="flex items-center gap-1 mb-4">
-                      {[...Array(Math.floor(selectedBook.volumeInfo.averageRating))].map((_, i) => (
-                        <Star key={i} size={18} weight="fill" className="text-yellow-500" />
-                      ))}
-                      {selectedBook.volumeInfo.averageRating % 1 !== 0 && (
-                        <StarHalf size={18} weight="fill" className="text-yellow-500" />
-                      )}
-                      <span className="text-gray-300 ml-2">
-                        {selectedBook.volumeInfo.averageRating} 
-                        {selectedBook.volumeInfo.ratingsCount && ` (${selectedBook.volumeInfo.ratingsCount} ratings)`}
-                      </span>
-                    </div>
+    <div className="max-w-4xl mx-auto">
+      {/* Back button */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-1 text-gray-400 hover:text-white mb-4"
+      >
+        <ArrowLeft size={16} />
+        Back
+      </button>
+      
+      {/* Shelf header */}
+      <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-xl border border-gray-700 overflow-hidden mb-6">
+        <div className="p-4 border-b border-gray-700">
+          <div className="flex justify-between items-start">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-600/20 p-2.5 rounded-full">
+                <BookmarkSimple size={24} className="text-purple-400" />
+              </div>
+              <div>
+                <h1 className="text-xl font-bold">{shelf.displayName}</h1>
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1 text-gray-400 text-sm">
+                    <User size={14} />
+                    <span>{shelfOwner.name || shelfOwner.username}</span>
+                  </div>
+                  {shelf.genre && shelf.genre !== "general" && (
+                    <span className="text-xs bg-gray-700 px-2 py-0.5 rounded-full text-gray-300">
+                      {shelf.genre.charAt(0).toUpperCase() + shelf.genre.slice(1)}
+                    </span>
                   )}
                 </div>
               </div>
-              
-              {/* Description */}
-              {selectedBook.volumeInfo?.description && (
-                <div>
-                  <h3 className="text-lg font-semibold mb-2 text-gray-200">Synopsis</h3>
-                  <p className="text-gray-300 leading-relaxed" 
-                     dangerouslySetInnerHTML={{ __html: selectedBook.volumeInfo.description }} />
-                </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {/* Follow button (only show if not the shelf owner) */}
+              {currentUser && currentUser.uid !== shelfOwner.uid && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={loading}
+                  className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                    isFollowing
+                      ? 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                      : 'bg-purple-600 hover:bg-purple-700 text-white'
+                  }`}
+                >
+                  {isFollowing ? (
+                    <>
+                      <UserMinus size={16} />
+                      Unfollow
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus size={16} />
+                      Follow
+                    </>
+                  )}
+                </button>
               )}
               
-              {/* User review - placeholder for now */}
-              <div>
-                <h3 className="text-lg font-semibold mb-2 text-gray-200">User Review</h3>
-                <p className="text-gray-400 italic">No review added yet.</p>
-              </div>
+              {/* Share button */}
+              <button
+                onClick={handleShare}
+                className="p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
+                title="Share shelf"
+              >
+                <Share size={16} className="text-gray-300" />
+              </button>
+              
+              {/* Heart button */}
+              <button 
+                onClick={handleHeartReaction}
+                className="flex items-center gap-1 p-2 rounded-lg bg-gray-700 hover:bg-gray-600 transition-colors"
+                disabled={loading}
+                title="Like shelf"
+              >
+                <Heart 
+                  size={16} 
+                  weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                  className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                    ? "text-red-500" 
+                    : "text-gray-300"} 
+                />
+                <span className="text-gray-300">
+                  {shelf.reactions?.hearts?.length || 0}
+                </span>
+              </button>
+              
+              {/* Ask for recommendation button (only show if not the shelf owner) */}
+              {currentUser && currentUser.uid !== shelfOwner.uid && (
+                <button
+                  onClick={() => setShowRecommendModal(true)}
+                  className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white text-sm transition-colors"
+                >
+                  <ChatCircleText size={16} />
+                  Ask for Recommendations
+                </button>
+              )}
             </div>
-          ) : (
-            <div className="flex items-center justify-center h-64 text-gray-400">
-              <p>Select a book to view details</p>
-            </div>
+          </div>
+          
+          {/* Shelf description */}
+          {shelf.description && (
+            <p className="text-gray-300 mt-3">{shelf.description}</p>
           )}
         </div>
+        
+        {/* Books */}
+        <div className="p-4">
+          <h2 className="text-lg font-medium mb-4 flex items-center gap-2">
+            <Books size={18} className="text-purple-400" />
+            {shelf.books?.length || 0} {shelf.books?.length === 1 ? 'Book' : 'Books'} on this Shelf
+          </h2>
+          
+          <Shelf
+            books={shelf.books || []}
+            title={null}
+            compact={false}
+          />
+        </div>
       </div>
+      
+      {/* Recommendation Request Modal */}
+      <RecommendationRequest
+        isOpen={showRecommendModal}
+        onClose={() => setShowRecommendModal(false)}
+        shelfOwner={shelfOwner}
+        shelfId={shelf.id}
+        shelfName={shelf.name}
+        currentUser={currentUser}
+      />
     </div>
   );
 }

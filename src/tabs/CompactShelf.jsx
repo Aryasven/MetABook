@@ -1,8 +1,8 @@
-// Shelf.jsx
+// CompactShelf.jsx
 import React, { useEffect, useState } from 'react';
 import { CaretDown, CaretUp } from 'phosphor-react';
 
-const BookCard = ({ book, compact }) => (
+const BookCard = ({ book, compact = true }) => (
   <div className={`${compact ? "w-16 h-24" : "w-20 h-28"} bg-gray-800 rounded shadow flex items-center justify-center p-1 overflow-hidden`}>
     <img
       src={book.volumeInfo?.imageLinks?.thumbnail || 'https://via.placeholder.com/128x195'}
@@ -13,38 +13,26 @@ const BookCard = ({ book, compact }) => (
   </div>
 );
 
-const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = null }) => {
-  const [booksPerRow, setBooksPerRow] = useState(6);
+const CompactShelf = ({ books, title, maxRows = 1, onBookClick = null }) => {
+  const [booksPerRow, setBooksPerRow] = useState(7);
   const [expanded, setExpanded] = useState(false);
   
-  // Update books per row based on screen size and compact mode
+  // Update books per row based on screen size
   useEffect(() => {
     const handleResize = () => {
-      if (compact) {
-        // Compact mode shows more books per row
-        if (window.innerWidth < 480) {
-          setBooksPerRow(4); // Small mobile: 4 books per row
-        } else if (window.innerWidth < 640) {
-          setBooksPerRow(5); // Mobile: 5 books per row
-        } else {
-          setBooksPerRow(7); // Tablet/Desktop: 7 books per row
-        }
+      if (window.innerWidth < 480) {
+        setBooksPerRow(4); // Small mobile: 4 books per row
+      } else if (window.innerWidth < 640) {
+        setBooksPerRow(5); // Mobile: 5 books per row
       } else {
-        // Standard mode
-        if (window.innerWidth < 480) {
-          setBooksPerRow(3); // Small mobile: 3 books per row
-        } else if (window.innerWidth < 640) {
-          setBooksPerRow(4); // Mobile: 4 books per row
-        } else {
-          setBooksPerRow(6); // Tablet/Desktop: 6 books per row
-        }
+        setBooksPerRow(7); // Tablet/Desktop: 7 books per row
       }
     };
     
     handleResize(); // Set initial value
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [compact]);
+  }, []);
 
   // Filter out duplicate books
   const uniqueBooks = books.filter((book, index, self) =>
@@ -58,12 +46,10 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
   }
 
   // Determine if we need to show expand/collapse button
-  // If maxRows is provided, use that as the threshold, otherwise use 2
-  const defaultMaxRows = maxRows || (compact ? 1 : 2);
-  const needsExpansion = rows.length > defaultMaxRows;
+  const needsExpansion = rows.length > maxRows;
   
   // If not expanded and needs expansion, only show limited rows
-  const visibleRows = expanded || !needsExpansion ? rows : rows.slice(0, defaultMaxRows);
+  const visibleRows = expanded || !needsExpansion ? rows : rows.slice(0, maxRows);
 
   // Handle book click
   const handleBookClick = (e, book) => {
@@ -101,20 +87,20 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
       </div>
       <div className="space-y-4">
         {visibleRows.map((row, i) => (
-          <div key={i} className={`relative ${compact ? "h-32" : "h-40"} w-full`}>
+          <div key={i} className="relative h-32 w-full">
             <img
               src="/wood-texture.jpg"
               alt="Wooden shelf"
               className="absolute inset-0 w-full h-full object-cover z-0"
             />
-            <div className={`relative z-10 flex justify-start items-end ${compact ? "gap-0.5 xs:gap-1" : "gap-0.5 xs:gap-1 sm:gap-4"} h-full px-1 sm:px-4 md:px-6`}>
+            <div className="relative z-10 flex justify-start items-end gap-0.5 xs:gap-1 h-full px-1 sm:px-4 md:px-6">
               {row.map(book => (
                 <div 
                   key={book.id} 
                   onClick={(e) => handleBookClick(e, book)}
                   className={onBookClick ? "cursor-pointer hover:scale-105 transition-transform" : ""}
                 >
-                  <BookCard book={book} compact={compact} />
+                  <BookCard book={book} />
                 </div>
               ))}
             </div>
@@ -125,4 +111,4 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
   );
 };
 
-export default Shelf;
+export default CompactShelf;

@@ -1,9 +1,18 @@
-// Login.jsx (with Firebase Auth)
+// Login.jsx (with Firebase Auth + Google Login)
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import logo from "./assets/metabook_logo.png";
-import { signInWithEmailAndPassword, getAuth, sendPasswordResetEmail, onAuthStateChanged } from "firebase/auth";
-import { EnvelopeSimple, LockSimple, ArrowRight } from "phosphor-react";
+import {
+  signInWithEmailAndPassword,
+  getAuth,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup
+} from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "./firebase";
+import { EnvelopeSimple, LockSimple, ArrowRight, GoogleLogo } from "phosphor-react";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -12,15 +21,13 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const auth = getAuth();
-  
-  // Check if user is already logged in, redirect to home if they are
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         navigate("/tabs");
       }
     });
-    
     return () => unsubscribe();
   }, [navigate]);
 
@@ -30,10 +37,9 @@ export default function Login() {
       alert("Please enter both email and password");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const auth = getAuth();
       await signInWithEmailAndPassword(auth, email, password);
       navigate("/tabs");
     } catch (err) {
@@ -48,10 +54,9 @@ export default function Login() {
       alert("Please enter your email address first");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const auth = getAuth();
       await sendPasswordResetEmail(auth, email);
       setResetSent(true);
     } catch (err) {
@@ -61,18 +66,67 @@ export default function Login() {
     }
   };
 
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      // Add scopes if needed
+      provider.addScope('profile');
+      provider.addScope('email');
+      // Set custom parameters
+      provider.setCustomParameters({
+        prompt: 'select_account'
+      });
+      
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      // Ensure user document exists
+      await setDoc(
+        doc(db, "users", user.uid),
+        {
+          username: user.displayName,
+          email: user.email,
+          name: "",
+          books: [],
+          stories: [],
+          shelves: [
+            {
+              id: `shelf-${Date.now()}`,
+              name: "Currently Reading",
+              books: []
+            }
+          ]
+        },
+        { merge: true }
+      );
+
+      navigate("/tabs");
+    } catch (err) {
+      console.error("Google sign-in error:", err);
+      // More specific error handling
+      if (err.code === 'auth/cancelled-popup-request') {
+        alert("Sign-in popup was closed before completing authentication.");
+      } else if (err.code === 'auth/popup-blocked') {
+        alert("Sign-in popup was blocked by your browser. Please allow popups for this site.");
+      } else {
+        alert("Google sign-in failed: " + err.message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-800 flex justify-center items-center px-4 text-white overflow-hidden">
-      {/* glowing graphics */}
       <div className="absolute top-0 left-1/3 w-72 h-72 bg-purple-700 opacity-20 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-pink-500 opacity-20 rounded-full blur-2xl animate-pulse" />
 
-      {/* login card */}
       <div className="z-20 bg-gray-950 shadow-2xl rounded-lg p-10 max-w-md w-full space-y-6 border border-gray-700">
         <img src={logo} alt="logo" className="w-44 mx-auto" />
-        
+
         <h2 className="text-2xl font-bold text-center">Welcome Back</h2>
-        
+
         <form onSubmit={handleLogin} className="space-y-4">
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -87,7 +141,7 @@ export default function Login() {
               required
             />
           </div>
-          
+
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
               <LockSimple size={20} className="text-gray-400" />
@@ -101,7 +155,7 @@ export default function Login() {
               required
             />
           </div>
-          
+
           <button
             type="submit"
             disabled={loading}
@@ -116,7 +170,15 @@ export default function Login() {
             )}
           </button>
         </form>
-        
+
+        <button
+          onClick={handleGoogleLogin}
+          disabled={loading}
+          className="w-full flex items-center justify-center gap-2 bg-white text-black py-3 rounded hover:bg-gray-200 transition mt-2"
+        >
+          <GoogleLogo size={20} weight="bold" /> Login with Google
+        </button>
+
         <div className="text-center">
           <button
             onClick={handleForgotPassword}
@@ -126,7 +188,7 @@ export default function Login() {
             {resetSent ? "Password reset email sent!" : "Forgot your password?"}
           </button>
         </div>
-        
+
         <div className="flex items-center justify-center mt-4">
           <span className="text-gray-400 text-sm">Don't have an account?</span>
           <button

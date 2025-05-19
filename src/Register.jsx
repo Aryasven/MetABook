@@ -1,11 +1,12 @@
-// Register.jsx (with Firebase Auth)
+// Register.jsx (with Firebase Auth + Google Sign-In)
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAuth, createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { getAuth, createUserWithEmailAndPassword, updateProfile, GoogleAuthProvider, signInWithPopup } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import logo from "./assets/metabook_logo.png";
-import { BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
+import { BookOpen, ArrowsLeftRight, Gift, Megaphone, GoogleLogo } from "phosphor-react";
+import { getDoc, updateDoc } from "firebase/firestore";
 
 const features = [
   { icon: BookOpen, label: "What I'm Into" },
@@ -28,22 +29,63 @@ export default function Register() {
       await setDoc(doc(db, "users", result.user.uid), {
         username,
         email: result.user.email,
-        name: "", // to be updated in About Me
+        name: "",
         books: [],
         stories: [],
         shelves: [
-          { 
-            id: `shelf-${Date.now()}`, 
-            name: "Currently Reading", 
-            books: [] 
+          {
+            id: `shelf-${Date.now()}`,
+            name: "Currently Reading",
+            books: []
           }
         ]
       });
-
-      // Navigate to Home page after registration
-      navigate("/");
+      navigate("/tabs");
     } catch (error) {
       alert(error.message);
+    }
+  };
+
+  const handleGoogleRegister = async () => {
+    try {
+      const auth = getAuth();
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+    // First check if the document exists
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        // Document exists, update only necessary fields
+        await updateDoc(userDocRef, {
+          username: user.displayName,
+          email: user.email,
+          // Don't overwrite books, stories, shelves if they exist
+        });
+      } else {
+        // Document doesn't exist, create new one
+        await setDoc(userDocRef, {
+          username: user.displayName,
+          email: user.email,
+          name: "",
+          books: [],
+          stories: [],
+          shelves: [
+            {
+              id: `shelf-${Date.now()}`,
+              name: "Currently Reading",
+              books: []
+            }
+          ]
+        });
+      }
+
+
+      navigate("/tabs");
+    } catch (error) {
+      alert("Google sign-in failed: " + error.message);
     }
   };
 
@@ -99,6 +141,13 @@ export default function Register() {
           className="w-full bg-purple-600 text-white py-3 rounded hover:bg-purple-700 transition"
         >
           Create Account
+        </button>
+        <div className="text-center text-gray-400">or</div>
+        <button
+          onClick={handleGoogleRegister}
+          className="w-full flex items-center justify-center gap-2 bg-white text-black py-3 rounded hover:bg-gray-200 transition"
+        >
+          <GoogleLogo size={20} weight="bold" /> Sign up with Google
         </button>
       </div>
     </div>

@@ -15,7 +15,7 @@ export default function AddBooksTab() {
   const [read, setRead] = useState([]);
   const [shelves, setShelves] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('search');
+  const [activeTab, setActiveTab] = useState('shelves');
   
   // Check URL for tab parameter
   useEffect(() => {
