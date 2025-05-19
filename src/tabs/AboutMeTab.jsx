@@ -37,7 +37,7 @@ export default function AboutMe() {
   };
 
   return (
-    <div className="p-6 max-w-xl mx-auto text-white">
+    <div className="p-6 max-w-xl mx-auto text-white bg-gradient-to-r from-gray-900/80 to-gray-800/80 backdrop-blur-sm rounded-xl border border-gray-700 shadow-lg">
       <h1 className="text-3xl font-bold mb-6">👤 About Me</h1>
       <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleSave(); }}>
         <div>

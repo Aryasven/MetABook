@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import WelcomePage from "./WelcomePage";
 import Home from "./Home"
 import Navbar from "./Navbar";
@@ -13,7 +13,8 @@ import UserStories from "./tabs/UserStoriesTab";
 import AboutMe from "./tabs/AboutMeTab";
 import AddReviews from "./tabs/AddReviewsTab";
 import { UserShelves } from "./tabs/UserShelvesTab";
-import { Communities } from "./tabs/CommunitiesTab"
+import { Communities } from "./tabs/CommunitiesTab";
+import FindFriends from "./tabs/FindFriends";
 import { Contribute } from "./Contribute";
 import { collection, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
@@ -23,6 +24,21 @@ import { AuthProvider, useAuth } from "./useAuth";
 // ProtectedRoute component to handle authentication checks
 const ProtectedRoute = ({ children }) => {
   const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Give auth a moment to initialize before redirecting
+    const checkAuth = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(checkAuth);
+  }, []);
+  
+  if (loading) {
+    // Show nothing while checking auth status
+    return null;
+  }
   
   if (!currentUser) {
     // Redirect to login if user is not authenticated
@@ -32,7 +48,32 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// Removed dummy users as we're now using Firestore
+// AuthRedirect component to redirect authenticated users away from auth pages
+const AuthRedirect = ({ children }) => {
+  const { currentUser } = useAuth();
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    // Give auth a moment to initialize before redirecting
+    const checkAuth = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+    
+    return () => clearTimeout(checkAuth);
+  }, []);
+  
+  if (loading) {
+    // Show nothing while checking auth status
+    return null;
+  }
+  
+  if (currentUser) {
+    // Redirect to home if user is already authenticated
+    return <Navigate to="/tabs" replace />;
+  }
+  
+  return children;
+};
 
 export default function App() {
   const [users, setUsers] = useState([]);
@@ -53,9 +94,17 @@ export default function App() {
     };
     
     fetchUsers();
+    
+    // Expose the setUsers function globally for components to update user data
+    window.updateUsers = (updatedUsers) => {
+      setUsers(updatedUsers);
+    };
+    
+    return () => {
+      // Clean up the global function when component unmounts
+      delete window.updateUsers;
+    };
   }, []);
-
-  // We'll define ProtectedRoute inside the AuthProvider context
 
   return (
     <AuthProvider>
@@ -63,8 +112,16 @@ export default function App() {
         <Navbar />
         <Routes>
           <Route path="/" element={<WelcomePage />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/login" element={
+            <AuthRedirect>
+              <Login />
+            </AuthRedirect>
+          } />
+          <Route path="/register" element={
+            <AuthRedirect>
+              <Register />
+            </AuthRedirect>
+          } />
           <Route path="/shelf/:username" element={<ShelfView />} />
           <Route path="/tabs" element={
             <ProtectedRoute>
@@ -76,6 +133,7 @@ export default function App() {
             <Route path="add-books" element={<AddBooks />} />
             <Route path="see-my-shelf" element={<SeeMyShelf />} />
             <Route path="add-reviews" element={<AddReviews />} />
+            <Route path="find-friends" element={<FindFriends />} />
             <Route path="stories" element={<UserStories />} />
             <Route path="shelves" element={<UserShelves />} />
             <Route path="communities" element={<Communities />} />

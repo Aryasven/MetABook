@@ -8,9 +8,9 @@ import logo from "./assets/metabook_logo.png";
 import { BookOpen, ArrowsLeftRight, Gift, Megaphone } from "phosphor-react";
 
 const features = [
-  { icon: BookOpen, label: "What I’m Into" },
+  { icon: BookOpen, label: "What I'm Into" },
   { icon: ArrowsLeftRight, label: "Wanna Swap?" },
-  { icon: Gift, label: "Take It, It’s Yours!" },
+  { icon: Gift, label: "Take It, It's Yours!" },
   { icon: Megaphone, label: "You Gotta Read This" }
 ];
 
@@ -31,10 +31,17 @@ export default function Register() {
         name: "", // to be updated in About Me
         books: [],
         stories: [],
-        shelves: []
+        shelves: [
+          { 
+            id: `shelf-${Date.now()}`, 
+            name: "Currently Reading", 
+            books: [] 
+          }
+        ]
       });
 
-      navigate("/tabs/about-me");
+      // Navigate to Home page after registration
+      navigate("/");
     } catch (error) {
       alert(error.message);
     }
