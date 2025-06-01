@@ -1,6 +1,6 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
+import { getAuth, connectAuthEmulator } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
@@ -16,7 +16,26 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-export const auth = getAuth(app);
-// export const db
+// Initialize auth with persistence for better PWA support
+const auth = getAuth(app);
+auth.setPersistence('local'); // Use local persistence for PWAs
+
+// Enable offline persistence for Firestore (helps with PWA)
+// This is especially important for iOS PWAs which may lose connection
+try {
+  db.enablePersistence({ synchronizeTabs: true })
+    .catch((err) => {
+      if (err.code === 'failed-precondition') {
+        // Multiple tabs open, persistence can only be enabled in one tab
+        console.log('Persistence failed: Multiple tabs open');
+      } else if (err.code === 'unimplemented') {
+        // The current browser does not support persistence
+        console.log('Persistence not supported by browser');
+      }
+    });
+} catch (e) {
+  console.log('Firestore persistence error:', e);
+}
+
+export { auth, db };
 export default app;
-export { db };

@@ -6,6 +6,10 @@
   "display": "standalone",
   "background_color": "#121212",
   "theme_color": "#9333ea",
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "shortcuts": [],
+  "scope": "/",
   "icons": [
     {
       "src": "icons/android/android-launchericon-48-48.png",

@@ -8,7 +8,9 @@ import {
   sendPasswordResetEmail,
   onAuthStateChanged,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult
 } from "firebase/auth";
 import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
@@ -66,6 +68,71 @@ export default function Login() {
     }
   };
 
+  useEffect(() => {
+    // Check for redirect result when component mounts
+    const checkRedirectResult = async () => {
+      try {
+        // Check if we have an auth in progress (especially important for iOS)
+        const authInProgress = localStorage.getItem('authInProgress');
+        
+        const result = await getRedirectResult(auth);
+        if (result && result.user) {
+          // User successfully authenticated via redirect
+          await handleGoogleUserData(result.user);
+          // Clear the auth in progress flag
+          localStorage.removeItem('authInProgress');
+          navigate("/tabs");
+        } else if (authInProgress) {
+          // If we had an auth in progress but no result, clear the flag
+          // This helps prevent stuck states on iOS
+          localStorage.removeItem('authInProgress');
+        }
+      } catch (err) {
+        // Clear auth in progress flag on error
+        localStorage.removeItem('authInProgress');
+        
+        console.error("Redirect sign-in error:", err);
+        if (err.code !== 'auth/cancelled-popup-request' && 
+            err.code !== 'auth/popup-closed-by-user') {
+          alert("Google sign-in failed: " + err.message);
+        }
+      }
+    };
+    
+    checkRedirectResult();
+  }, []);
+
+  // Helper function to handle user data after successful Google auth
+  const handleGoogleUserData = async (user) => {
+    // Check if user document already exists before creating/updating
+    const userDocRef = doc(db, "users", user.uid);
+    const userDocSnap = await getDoc(userDocRef);
+    
+    if (userDocSnap.exists()) {
+      // Document exists, only update authentication-related fields
+      await updateDoc(userDocRef, {
+        email: user.email,
+        ...(userDocSnap.data().username ? {} : { username: user.displayName })
+      });
+    } else {
+      // New user - create complete profile
+      await setDoc(userDocRef, {
+        username: user.displayName,
+        email: user.email,
+        name: "",
+        books: [],
+        stories: [],
+        shelves: [
+          {
+            id: `shelf-${Date.now()}`,
+            name: "Currently Reading",
+            books: []
+          }
+        ]
+      });
+    }
+  };
+
   const handleGoogleLogin = async () => {
     setLoading(true);
     try {
@@ -79,9 +146,24 @@ export default function Login() {
         prompt: 'select_account'
       });
       
-      // Use signInWithRedirect for better mobile compatibility
-      const result = await signInWithPopup(auth, provider);
-      const user = result.user;
+      // Check if running in a PWA on mobile
+      const isPWA = window.matchMedia('(display-mode: standalone)').matches;
+      const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+      const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      
+      // Always use redirect for iOS PWAs due to Safari's restrictions
+      if ((isPWA && isMobile) || isIOS) {
+        // Store auth state in localStorage to help with iOS PWA session persistence
+        localStorage.setItem('authInProgress', 'true');
+        
+        // Use redirect method for PWA on mobile and all iOS devices
+        await signInWithRedirect(auth, provider);
+        // The result will be handled in the useEffect with getRedirectResult
+        return;
+      } else {
+        // Use popup for desktop browsers
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
 
       // Check if user document already exists before creating/updating
       const userDocRef = doc(db, "users", user.uid);
@@ -114,7 +196,10 @@ export default function Login() {
         });
       }
 
-      navigate("/tabs");
+        // For popup flow, process the user data
+        await handleGoogleUserData(user);
+        navigate("/tabs");
+      }
     } catch (err) {
       console.error("Google sign-in error:", err);
       // More specific error handling
