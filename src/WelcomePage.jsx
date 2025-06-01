@@ -1,34 +1,41 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
 import {
-  BookOpen,
-  Eyeglasses,
+  BookBookmark,
+  UsersThree,
   ArrowsLeftRight,
-  Gift,
   Megaphone
 } from "phosphor-react";
 import logo from "./assets/metabook_logo.png";
 import { useAuth } from "./useAuth";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 
 const features = [
-  { icon: BookOpen, label: "What I'm Into" },
-  { icon: Eyeglasses, label: "Peek at Others" },
-  { icon: ArrowsLeftRight, label: "Wanna Swap?" },
-  { icon: Gift, label: "Take It, It's Yours!" },
-  { icon: Megaphone, label: "You Gotta Read This" }
+  { 
+    icon: BookBookmark, 
+    label: "What I'm Into",
+    description: "Track your reading journey"
+  },
+  { 
+    icon: UsersThree, 
+    label: "Peek at Others",
+    description: "Discover what friends are reading"
+  },
+  { 
+    icon: ArrowsLeftRight, 
+    label: "Wanna Swap?",
+    description: "Exchange books with the community"
+  },
+  { 
+    icon: Megaphone, 
+    label: "You Gotta Read This",
+    description: "Share recommendations with friends"
+  }
 ];
 
 export default function WelcomePage() {
   const navigate = useNavigate();
   const { currentUser } = useAuth();
-  
-  // // Redirect to home if user is already logged in
-  // React.useEffect(() => {
-  //   if (currentUser) {
-  //     navigate("/tabs");
-  //   }
-  // }, [currentUser, navigate]);
 
   return (
     <div className="relative min-h-screen bg-gradient-to-br from-gray-900 via-purple-900 to-gray-800 overflow-hidden flex flex-col items-center justify-center px-4 py-8 md:px-6 md:py-0">
@@ -47,47 +54,61 @@ export default function WelcomePage() {
         ))}
       </div>
 
-      <div className="z-10 text-center space-y-6">
+      {/* Login/Register buttons at the top */}
+      <div className="absolute top-4 right-4 flex gap-2 z-20">
+        {currentUser ? (
+          <button
+            onClick={() => navigate("/tabs")}
+            className="bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 shadow text-sm"
+          >
+            Go to My Home
+          </button>
+        ) : (
+          <>
+            <button
+              onClick={() => navigate("/login")}
+              className="bg-indigo-600 text-white px-4 py-1.5 rounded-lg hover:bg-indigo-700 shadow text-sm"
+            >
+              Login
+            </button>
+            <button
+              onClick={() => navigate("/register")}
+              className="bg-purple-600 text-white px-4 py-1.5 rounded-lg hover:bg-purple-700 shadow text-sm"
+            >
+              Register
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* PWA Install at the top left */}
+      <div className="absolute top-4 left-4 z-20">
+        <PWAInstallPrompt compact={true} />
+      </div>
+
+      <div className="z-10 text-center space-y-6 max-w-4xl">
         <div className="space-y-1">
-          <img src={logo} alt="Met·A·Book Logo" className="w-72 mx-auto -mt-12 md:-mt-32" />
+          <img src={logo} alt="Met·A·Book Logo" className="w-60 mx-auto" />
           <p className="text-xl text-gray-300 italic">the place for book-lovers</p>
         </div>
 
-        <div className="flex flex-wrap justify-center gap-2 md:gap-4 mt-6">
-          {features.map(({ icon: Icon, label }) => (
-            <div key={label} className="flex flex-col items-center gap-2 bg-gray-800 shadow-md rounded-xl p-3 border border-gray-700">
-              <Icon size={32} weight="duotone" className="text-purple-600" />
-              <span className="text-xs font-medium text-gray-200">{label}</span>
+        <p className="text-lg max-w-2xl text-gray-300 mx-auto mt-2">
+          📚 Met·A·Book is your cozy corner in the literary universe! Share what's on your nightstand, discover hidden gems from fellow bookworms, and pass along beloved stories.
+        </p>
+
+        <div className="flex flex-wrap justify-center gap-3 mt-4">
+          {features.map(({ icon: Icon, label, description }) => (
+            <div key={label} className="flex flex-col items-center w-36 sm:w-48 bg-gray-800/80 shadow-lg rounded-xl p-3 border border-gray-700 hover:border-purple-500 transition-all">
+              <div className="bg-purple-600/30 p-2 rounded-full mb-2">
+                <Icon size={24} weight="duotone" className="text-purple-400" />
+              </div>
+              <h3 className="font-bold text-sm text-white">{label}</h3>
+              <p className="text-xs text-gray-300 mt-1 hidden sm:block">{description}</p>
             </div>
           ))}
         </div>
 
-        <p className="text-lg max-w-2xl text-gray-300 mx-auto">
-          📚 Met·A·Book is your cozy corner in the literary universe! Share what's on your nightstand, discover hidden gems from fellow bookworms, and pass along beloved stories. Your next favorite read is just a click away!
-        </p>
-
-        <div className="mt-6 flex flex-wrap gap-3 md:gap-6 justify-center">
-          <button
-            onClick={() => navigate("/register")}
-            className="bg-purple-600 text-white px-6 py-2 rounded-lg hover:bg-purple-700 shadow"
-          >
-            Register
-          </button>
-          <button
-            onClick={() => navigate("/login")}
-            className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 shadow"
-          >
-            Login
-          </button>
-          {currentUser && (
-            <button
-              onClick={() => navigate("/tabs")}
-              className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700 shadow"
-            >
-              Go to My Home
-            </button>
-          )}
-        </div>
+        {/* Home button removed from here since it's now at the top */}
       </div>
     </div>
   );
