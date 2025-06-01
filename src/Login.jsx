@@ -10,7 +10,7 @@ import {
   GoogleAuthProvider,
   signInWithPopup
 } from "firebase/auth";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, getDoc, updateDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { EnvelopeSimple, LockSimple, ArrowRight, GoogleLogo } from "phosphor-react";
 
@@ -70,21 +70,35 @@ export default function Login() {
     setLoading(true);
     try {
       const provider = new GoogleAuthProvider();
-      // Add scopes if needed
+      // Add scopes for better user data
       provider.addScope('profile');
       provider.addScope('email');
-      // Set custom parameters
+      
+      // Force account selection to avoid automatic login with cached credentials
       provider.setCustomParameters({
         prompt: 'select_account'
       });
       
+      // Use signInWithRedirect for better mobile compatibility
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
 
-      // Ensure user document exists
-      await setDoc(
-        doc(db, "users", user.uid),
-        {
+      // Check if user document already exists before creating/updating
+      const userDocRef = doc(db, "users", user.uid);
+      const userDocSnap = await getDoc(userDocRef);
+      
+      if (userDocSnap.exists()) {
+        // Document exists, only update authentication-related fields
+        // This preserves existing user data like books, stories, shelves
+        await updateDoc(userDocRef, {
+          // Only update these fields, preserving everything else
+          email: user.email,
+          // Update username only if it doesn't exist
+          ...(userDocSnap.data().username ? {} : { username: user.displayName })
+        });
+      } else {
+        // New user - create complete profile
+        await setDoc(userDocRef, {
           username: user.displayName,
           email: user.email,
           name: "",
@@ -97,9 +111,8 @@ export default function Login() {
               books: []
             }
           ]
-        },
-        { merge: true }
-      );
+        });
+      }
 
       navigate("/tabs");
     } catch (err) {
@@ -109,6 +122,9 @@ export default function Login() {
         alert("Sign-in popup was closed before completing authentication.");
       } else if (err.code === 'auth/popup-blocked') {
         alert("Sign-in popup was blocked by your browser. Please allow popups for this site.");
+      } else if (err.code === 'auth/popup-closed-by-user') {
+        // User closed the popup, no need to show error
+        console.log("User closed the sign-in popup");
       } else {
         alert("Google sign-in failed: " + err.message);
       }
