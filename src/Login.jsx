@@ -75,8 +75,13 @@ export default function Login() {
         // Check if we have an auth in progress (especially important for iOS)
         const authInProgress = localStorage.getItem('authInProgress');
         
+        console.log("Checking for redirect result, auth in progress:", !!authInProgress);
+        
         const result = await getRedirectResult(auth);
+        console.log("Redirect result received:", !!result);
+        
         if (result && result.user) {
+          console.log("User authenticated via redirect:", result.user.email);
           // User successfully authenticated via redirect
           await handleGoogleUserData(result.user);
           // Clear the auth in progress flag
@@ -85,14 +90,25 @@ export default function Login() {
         } else if (authInProgress) {
           // If we had an auth in progress but no result, clear the flag
           // This helps prevent stuck states on iOS
+          console.log("Auth was in progress but no result received, clearing state");
           localStorage.removeItem('authInProgress');
+          
+          // Check if the auth in progress is stale (more than 5 minutes old)
+          const authTimestamp = parseInt(authInProgress);
+          if (!isNaN(authTimestamp) && Date.now() - authTimestamp > 5 * 60 * 1000) {
+            console.log("Auth in progress was stale, showing error message");
+            alert("Google sign-in timed out. Please try again.");
+          }
         }
       } catch (err) {
         // Clear auth in progress flag on error
         localStorage.removeItem('authInProgress');
         
         console.error("Redirect sign-in error:", err);
-        if (err.code !== 'auth/cancelled-popup-request' && 
+        if (err.code === 'auth/operation-not-supported-in-this-environment') {
+          console.error("iOS PWA auth error - operation not supported");
+          alert("Google sign-in is not fully supported in this environment. Please try again or use email login.");
+        } else if (err.code !== 'auth/cancelled-popup-request' && 
             err.code !== 'auth/popup-closed-by-user') {
           alert("Google sign-in failed: " + err.message);
         }
@@ -151,14 +167,31 @@ export default function Login() {
       const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
       const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
       
-      // Always use redirect for iOS PWAs due to Safari's restrictions
+      // For iOS PWAs, use a simpler approach to avoid auth issues
+      if (isIOS && isPWA) {
+        try {
+          // For iOS PWA, use popup as a fallback since redirect has issues
+          const result = await signInWithPopup(auth, provider);
+          if (result && result.user) {
+            await handleGoogleUserData(result.user);
+            navigate("/tabs");
+          }
+          return;
+        } catch (iosErr) {
+          console.error("iOS PWA auth error:", iosErr);
+          alert("Google sign-in failed on iOS. Please try using email login instead.");
+          return;
+        }
+      }
+      
+      // For other mobile devices or PWAs
       if ((isPWA && isMobile) || isIOS) {
-        // Store auth state in localStorage to help with iOS PWA session persistence
-        localStorage.setItem('authInProgress', 'true');
+        // Clear any previous auth state
+        localStorage.removeItem('authInProgress');
+        localStorage.setItem('authInProgress', Date.now().toString());
         
-        // Use redirect method for PWA on mobile and all iOS devices
+        // Use redirect method for mobile devices
         await signInWithRedirect(auth, provider);
-        // The result will be handled in the useEffect with getRedirectResult
         return;
       } else {
         // Use popup for desktop browsers

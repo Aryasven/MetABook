@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
-import { getAuth, connectAuthEmulator } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { getFirestore, enableIndexedDbPersistence } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: "AIzaSyBeiaQLJUhQltzf9U23tICNN0inmG-vG5w",
@@ -15,27 +15,36 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
-// Initialize auth with persistence for better PWA support
 const auth = getAuth(app);
-auth.setPersistence('local'); // Use local persistence for PWAs
 
-// Enable offline persistence for Firestore (helps with PWA)
-// This is especially important for iOS PWAs which may lose connection
-try {
-  db.enablePersistence({ synchronizeTabs: true })
-    .catch((err) => {
-      if (err.code === 'failed-precondition') {
-        // Multiple tabs open, persistence can only be enabled in one tab
-        console.log('Persistence failed: Multiple tabs open');
-      } else if (err.code === 'unimplemented') {
-        // The current browser does not support persistence
-        console.log('Persistence not supported by browser');
-      }
-    });
-} catch (e) {
-  console.log('Firestore persistence error:', e);
+// Set persistence properly for Firebase v9
+// This is critical for PWAs, especially on iOS
+setPersistence(auth, browserLocalPersistence)
+  .catch((error) => {
+    console.error("Auth persistence error:", error);
+  });
+
+// Disable Firestore persistence for iOS PWAs to prevent auth issues
+// iOS PWAs have specific limitations with IndexedDB in Safari
+const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
+
+if (!isIOS && typeof window !== 'undefined' && window.indexedDB) {
+  // Only enable persistence for non-iOS devices
+  enableIndexedDbPersistence(db).catch((err) => {
+    console.log('Firestore persistence error:', err.code);
+  });
 }
 
-export { auth, db };
+// Add a helper function to check auth state - useful for debugging
+const checkAuthState = () => {
+  return new Promise((resolve) => {
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      unsubscribe();
+      resolve(user);
+    });
+  });
+};
+
+export { auth, db, checkAuthState };
 export default app;
