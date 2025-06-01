@@ -314,11 +314,11 @@ export default function Home({ users }) {
       <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-700">
         <div className="p-3 pb-1">
           <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="bg-purple-600 p-2 rounded-full">
-                <Books size={24} weight="bold" />
+            <div className="flex items-center gap-2">
+              <div className="bg-purple-600 p-1.5 rounded-full">
+                <Books size={20} weight="bold" />
               </div>
-              <h1 className="text-xl font-bold">Welcome to MetABook</h1>
+              <h1 className="text-lg font-bold">Welcome to MetABook</h1>
             </div>
             <button 
               onClick={() => setShowWalkthrough(true)}
@@ -329,27 +329,27 @@ export default function Home({ users }) {
             </button>
           </div>
           
-          <p className="text-gray-300 mb-3">
+          <p className="text-gray-300 mb-2 text-sm">
             Share your reading journey, discover new books, and connect with fellow readers.
           </p>
           
           {/* Currently Reading Input */}
           {currentUser && (
-            <div className="bg-gray-800/80 rounded-lg p-3 mb-3 border border-gray-700">
-              <div className="flex items-center gap-2 mb-2">
-                <BookOpen size={18} className="text-blue-400" />
-                <h3 className="font-medium">What are you currently reading?</h3>
+            <div className="bg-gray-800/80 rounded-lg p-2 mb-2 border border-gray-700">
+              <div className="flex items-center gap-1.5 mb-1.5">
+                <BookOpen size={16} className="text-blue-400" />
+                <h3 className="font-medium text-sm">What are you currently reading?</h3>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1.5">
                 <input
                   type="text"
                   value={currentlyReading}
                   onChange={(e) => setCurrentlyReading(e.target.value)}
                   placeholder="Enter book title..."
-                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-2 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-500"
                 />
                 <button 
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm"
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1.5 rounded-lg text-xs"
                   onClick={async () => {
                     if (!currentlyReading.trim()) return;
                     
@@ -443,7 +443,7 @@ export default function Home({ users }) {
           )}
           
           {/* Feature Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
             {featureMap.map(feature => {
               const hasBooks = currentUser?.shelves?.some(shelf => shelf.books?.length > 0);
               const isLibraryFeature = feature.label === "Build My Library";
@@ -462,13 +462,13 @@ export default function Home({ users }) {
                       setShowStoryInput(feature);
                     }
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 p-4 bg-gradient-to-br ${feature.color} rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all relative
+                  className={`flex flex-col items-center justify-center gap-1 py-2 px-1 bg-gradient-to-br ${feature.color} rounded-lg shadow-md hover:shadow-xl hover:scale-105 transition-all relative
                     ${isLibraryFeature && !hasBooks ? 'animate-pulse ring-2 ring-yellow-400' : ''}`}
                 >
-                  <feature.icon size={28} weight="duotone" className="mb-1" />
-                  <span className="text-sm font-medium text-center">{feature.label}</span>
+                  <feature.icon size={22} weight="duotone" />
+                  <span className="text-xs font-medium text-center">{feature.label}</span>
                   {isLibraryFeature && !hasBooks && (
-                    <span className="absolute -top-2 -right-2 bg-yellow-400 text-black text-xs px-2 py-0.5 rounded-full font-bold">
+                    <span className="absolute -top-1 -right-1 bg-yellow-400 text-black text-xs px-1.5 py-0.5 rounded-full font-bold text-[10px]">
                       New!
                     </span>
                   )}

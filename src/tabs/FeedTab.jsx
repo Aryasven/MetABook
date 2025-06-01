@@ -3,6 +3,7 @@ import React, { useState } from "react";
 import { Activity, Heart, BookmarkSimple, UserPlus, ChatCircleText } from "phosphor-react";
 import { useNavigate } from "react-router-dom";
 import ShelfCard from "../components/ShelfCard";
+import ReadingStats from "../components/ReadingStats";
 
 export default function FeedTab({ users, currentUser, handleHeartReaction, setShowStoryInput, featureMap }) {
   const [expandedStories, setExpandedStories] = useState([]);
@@ -97,6 +98,10 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
         
         <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
           <div className="space-y-4">
+            {/* Reading Stats - only show for current user */}
+            {currentUser && (
+              <ReadingStats user={currentUser} />
+            )}
             {/* Activity items */}
             {activityItems.map((item, index) => {
               if (item.type === 'story') {
