@@ -4,7 +4,8 @@ import { GoogleAuthProvider, getAuth, signInWithPopup } from "firebase/auth";
 import { collection, getDocs, doc, updateDoc, arrayUnion, arrayRemove, getDoc } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../useAuth";
-import { MagnifyingGlass, EnvelopeSimple, Phone, UserPlus, Check, Users, UserSwitch } from "phosphor-react";
+import { MagnifyingGlass, EnvelopeSimple, Phone, UserPlus, Check, Users, UserSwitch, ShareNetwork } from "phosphor-react";
+import InviteFriendsModal from "../components/InviteFriendsModal";
 
 export default function FindFriends() {
   const [contacts, setContacts] = useState([]);
@@ -16,6 +17,7 @@ export default function FindFriends() {
   const [allUsers, setAllUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [sentRequests, setSentRequests] = useState([]);
+  const [showInviteModal, setShowInviteModal] = useState(false);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -269,6 +271,24 @@ export default function FindFriends() {
         </div>
       )}
 
+      {/* Invite Friends Section */}
+      <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
+        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <ShareNetwork size={20} className="text-blue-400" />
+          Invite Friends
+        </h2>
+        <p className="text-gray-300 mb-4">
+          Know someone who loves books? Invite them to join MetABook and connect with you!
+        </p>
+        <button
+          onClick={() => setShowInviteModal(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+        >
+          <ShareNetwork size={18} weight="bold" />
+          Invite Friends
+        </button>
+      </div>
+
       {/* Contacts Section */}
       <div className="mb-8 bg-gray-800 p-4 rounded-lg border border-gray-700">
         <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
@@ -377,6 +397,9 @@ export default function FindFriends() {
           </ul>
         </div>
       )}
+
+      {/* Invite Friends Modal */}
+      <InviteFriendsModal isOpen={showInviteModal} onClose={() => setShowInviteModal(false)} />
     </div>
   );
 }
