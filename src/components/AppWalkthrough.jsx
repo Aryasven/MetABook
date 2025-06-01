@@ -11,7 +11,7 @@ const steps = [
   },
   {
     title: "Build Your Library",
-    content: "Create your own bookshelves and add books to your collection. Click the 'Build My Library' card on the home page to get started.",
+    content: "Create your own bookshelves and add books to your collection. Click 'Build My Library' on the home page to get started.",
     icon: Books,
     action: { label: "Build Library", path: "/tabs/add-books" }
   },
