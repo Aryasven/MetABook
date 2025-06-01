@@ -17,14 +17,9 @@ const steps = [
   },
   {
     title: "Discover Bookshelves",
-    content: "Browse through other readers' bookshelves to discover new books and see what others are reading.",
+    content: "Browse through other readers' bookshelves to discover new books, or chat about their collection.",
     icon: BookmarkSimple,
     action: { label: "Go to Discover", path: "/", tabId: "shelves" }
-  },
-  {
-    title: "Like Shelves",
-    content: "Heart the shelves you enjoy to show appreciation. This feature is already available - just click the heart icon on any shelf.",
-    icon: Heart
   },
   {
     title: "Follow Readers",
@@ -33,7 +28,7 @@ const steps = [
   },
   {
     title: "Interact with Books",
-    content: "Click on any book to see details. You can mark books as 'Read', 'Want to Read', or ask for reviews and borrowing.",
+    content: "Click on any book to see details, ask for reviews, or request to borrow.",
     icon: BookOpen
   },
   {
