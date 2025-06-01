@@ -13,7 +13,8 @@ import UserStories from "./tabs/UserStoriesTab";
 import AboutMe from "./tabs/AboutMeTab";
 import AddReviews from "./tabs/AddReviewsTab";
 import { UserShelves } from "./tabs/UserShelvesTab";
-import { Communities } from "./tabs/CommunitiesTab";
+import CommunitiesTab from "./tabs/CommunitiesTab";
+import BookExchangeTab from "./tabs/BookExchangeTab";
 import FindFriends from "./tabs/FindFriends";
 import { Contribute } from "./Contribute";
 import { collection, getDocs } from "firebase/firestore";
@@ -136,7 +137,8 @@ export default function App() {
             <Route path="find-friends" element={<FindFriends />} />
             <Route path="stories" element={<UserStories />} />
             <Route path="shelves" element={<UserShelves />} />
-            <Route path="communities" element={<Communities />} />
+            <Route path="communities" element={<CommunitiesTab />} />
+            <Route path="book-exchange" element={<BookExchangeTab />} />
             <Route path="contribute" element={<Contribute />} />
           </Route>
         </Routes>

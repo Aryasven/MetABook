@@ -23,7 +23,7 @@ export function Contribute() {
       id: "nvHrXn6EQOVu2kbiVKrNfdp6XEj1",
       name: "Tashefa",
       role: "Co-Founder & Community Director",
-      bio: "Connector of readers, curator of stories, and architect of literary communities."
+      bio: "Connector of readers, and curator of stories."
     }
     */
   ];

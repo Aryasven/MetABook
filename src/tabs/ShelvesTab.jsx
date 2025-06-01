@@ -1,7 +1,8 @@
 // ShelvesTab.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookmarkSimple, MagnifyingGlass, User, Heart, Books, FunnelSimple, X, ArrowsDownUp, Star, ChatCircleText } from "phosphor-react";
+import { BookmarkSimple, MagnifyingGlass, Books, FunnelSimple, X, ArrowsDownUp, Star, ChatCircleText } from "phosphor-react";
+import ShelfCard from "../components/ShelfCard";
 import { useAuth } from "../useAuth";
 import Shelf from "./Shelf";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
@@ -15,7 +16,7 @@ export default function ShelvesTab({ users, onHeartReaction }) {
   const [loading, setLoading] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [genreFilter, setGenreFilter] = useState("all");
-  const [sortOption, setSortOption] = useState("recent");
+  const [sortOption, setSortOption] = useState("random");
   const [featuredOnly, setFeaturedOnly] = useState(false);
   const [recommendationModal, setRecommendationModal] = useState({
     isOpen: false,
@@ -49,6 +50,14 @@ export default function ShelvesTab({ users, onHeartReaction }) {
 
   // Common genres for filtering
   const genres = ["fiction", "non-fiction", "mystery", "sci-fi", "fantasy", "biography", "history", "general"];
+
+// Sort options
+const sortOptions = [
+  { value: "random", label: "Random" },
+  { value: "recent", label: "Most Recent" },
+  { value: "popular", label: "Most Popular" },
+  { value: "alphabetical", label: "Alphabetical" }
+];
   
   // Apply filters and sorting
   const filteredShelves = allShelves
@@ -65,14 +74,22 @@ export default function ShelvesTab({ users, onHeartReaction }) {
     .filter(shelf => genreFilter === "all" || shelf.genre === genreFilter)
     // Apply featured filter
     .filter(shelf => !featuredOnly || shelf.featured)
-    // Apply sorting
+    // Apply sorting or shuffle
     .sort((a, b) => {
+      // If no specific filters are applied, shuffle the results
+      if (searchQuery === "" && genreFilter === "all" && !featuredOnly && sortOption === "recent") {
+        return 0.5 - Math.random(); // Simple shuffle algorithm
+      }
+      
+      // Otherwise use the selected sort option
       if (sortOption === "recent") {
         return new Date(b.lastUpdated) - new Date(a.lastUpdated);
       } else if (sortOption === "popular") {
         return (b.reactions?.hearts?.length || 0) - (a.reactions?.hearts?.length || 0);
       } else if (sortOption === "alphabetical") {
         return a.displayName.localeCompare(b.displayName);
+      } else if (sortOption === "random") {
+        return 0.5 - Math.random();
       }
       return 0;
     });
@@ -218,9 +235,9 @@ export default function ShelvesTab({ users, onHeartReaction }) {
   return (
     <div>
       {/* Search and Filter Controls */}
-      <div className="flex flex-col gap-4 mb-6">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
+      <div className="flex flex-col gap-4 mb-6 w-full">
+        <div className="flex flex-wrap justify-between items-center">
+          <div className="flex flex-wrap items-center gap-3 mb-2 sm:mb-0">
             <h2 className="text-xl font-bold">Discover Bookshelves</h2>
             {currentUser && (
               <button
@@ -232,8 +249,8 @@ export default function ShelvesTab({ users, onHeartReaction }) {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative w-64">
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="relative w-full sm:w-64">
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <MagnifyingGlass size={18} className="text-gray-400" />
               </div>
@@ -285,87 +302,22 @@ export default function ShelvesTab({ users, onHeartReaction }) {
 
       {/* All Shelves Grid */}
       <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredShelves.map(shelf => (
-          <div 
-            key={shelf.id}
-            className={`bg-gray-800 rounded-xl border ${shelf.featured ? 'border-yellow-500/30' : 'border-gray-700'} overflow-hidden hover:border-purple-500 cursor-pointer transition-all`}
-            onClick={() => navigate(`/shelf/${shelf.user.uid}?shelfId=${shelf.id}`)}
-          >
-            {/* Shelf header */}
-            <div className="p-3 border-b border-gray-700 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`${shelf.featured ? 'bg-yellow-500/20' : 'bg-gray-700'} p-1.5 rounded-full`}>
-                  <User size={16} className={shelf.featured ? "text-yellow-400" : "text-purple-400"} />
-                </div>
-                <div>
-                  <span className="font-medium text-sm">{shelf.displayName}</span>
-                  {shelf.genre && shelf.genre !== "general" && (
-                    <span className="text-xs text-gray-400 block">{shelf.genre.charAt(0).toUpperCase() + shelf.genre.slice(1)}</span>
-                  )}
-                </div>
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    // Find the shelf owner
-                    const shelfOwner = users.find(u => u.uid === shelf.user.uid || u.username === shelf.user.username);
-                    if (shelfOwner) {
-                      setRecommendationModal({
-                        isOpen: true,
-                        shelfOwner,
-                        shelfId: shelf.id,
-                        shelfName: shelf.name
-                      });
-                    }
-                  }}
-                  className="p-1.5 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
-                  title="Ask for recommendation"
-                >
-                  <ChatCircleText size={14} className="text-blue-400" />
-                </button>
-                
-                <button 
-                  onClick={(e) => handleHeartReaction(e, shelf)}
-                  className="flex items-center gap-1 text-xs"
-                  disabled={loading}
-                >
-                  <Heart 
-                    size={16} 
-                    weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
-                    className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
-                      ? "text-red-500" 
-                      : "text-gray-400 hover:text-red-500"} 
-                  />
-                  <span className="text-gray-400">
-                    {shelf.reactions?.hearts?.length || 0}
-                  </span>
-                </button>
-              </div>
-            </div>
-            
-            {/* Book preview */}
-            <div className="p-3">
-              <Shelf
-                books={shelf.books?.slice(0, 5) || []}
-                title={null}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 w-full">
+          {filteredShelves.map(shelf => {
+            // Find the shelf owner
+            const shelfOwner = users.find(u => u.uid === shelf.user.uid || u.username === shelf.user.username);
+            return (
+              <ShelfCard
+                key={shelf.id}
+                shelf={shelf}
+                shelfOwner={shelfOwner}
+                currentUser={currentUser}
+                onHeartReaction={(e, owner, s) => handleHeartReaction(e, s)}
+                loading={loading}
                 compact={true}
               />
-            </div>
-            
-            {/* Shelf info */}
-            <div className="px-3 pb-3 flex justify-between items-center">
-              <span className="text-xs text-gray-400">
-                {shelf.books?.length || 0} books
-              </span>
-              <span className="text-xs text-gray-400">
-                {new Date(shelf.lastUpdated).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
-              </span>
-            </div>
-          </div>
-        ))}
+            );
+          })}
         </div>
       </div>
       

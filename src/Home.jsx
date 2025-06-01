@@ -7,7 +7,7 @@ import {
 } from "phosphor-react";
 import AppWalkthrough from "./components/AppWalkthrough";
 import { db } from "./firebase";
-import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, updateDoc, query, where, addDoc } from "firebase/firestore";
 import { useAuth } from "./useAuth";
 
 // Import tab components
@@ -19,8 +19,8 @@ import ShelvesTab from "./tabs/ShelvesTab";
 const featureMap = [
   { icon: BookOpen, label: "Build My Library", color: "from-blue-600 to-blue-800", lightColor: "text-blue-400" },
   { icon: Megaphone, label: "You Gotta Read This", color: "from-pink-600 to-pink-800", lightColor: "text-pink-400" },
-  { icon: ArrowsLeftRight, label: "Wanna Swap?", color: "from-green-600 to-green-800", lightColor: "text-green-400" },
-  { icon: Gift, label: "Take It, It's Yours!", color: "from-purple-600 to-purple-800", lightColor: "text-purple-400" }
+  { icon: ArrowsLeftRight, label: "Book Exchange", color: "from-green-600 to-green-800", lightColor: "text-green-400" },
+  { icon: Gift, label: "Join the Community", color: "from-purple-600 to-purple-800", lightColor: "text-purple-400" }
 ];
 
 export default function Home({ users }) {
@@ -31,6 +31,7 @@ export default function Home({ users }) {
   const [expandedStories, setExpandedStories] = useState([]);
   const [activeTab, setActiveTab] = useState("feed");
   const [showWalkthrough, setShowWalkthrough] = useState(false);
+  const [currentlyReading, setCurrentlyReading] = useState("");
   const navigate = useNavigate();
   const { currentUser: authUser } = useAuth();
 
@@ -332,6 +333,115 @@ export default function Home({ users }) {
             Share your reading journey, discover new books, and connect with fellow readers.
           </p>
           
+          {/* Currently Reading Input */}
+          {currentUser && (
+            <div className="bg-gray-800/80 rounded-lg p-3 mb-3 border border-gray-700">
+              <div className="flex items-center gap-2 mb-2">
+                <BookOpen size={18} className="text-blue-400" />
+                <h3 className="font-medium">What are you currently reading?</h3>
+              </div>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={currentlyReading}
+                  onChange={(e) => setCurrentlyReading(e.target.value)}
+                  placeholder="Enter book title..."
+                  className="flex-1 bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+                <button 
+                  className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-sm"
+                  onClick={async () => {
+                    if (!currentlyReading.trim()) return;
+                    
+                    try {
+                      setLoading(true);
+                      // Find or create "Currently Reading" shelf
+                      const userRef = doc(db, "users", currentUser.uid);
+                      const userSnap = await getDoc(userRef);
+                      const userData = userSnap.data();
+                      const shelves = userData.shelves || [];
+                      
+                      let currentlyReadingShelf = shelves.find(s => s.name === "Currently Reading");
+                      const newBook = {
+                        id: `book-${Date.now()}`,
+                        title: currentlyReading,
+                        addedAt: new Date().toISOString()
+                      };
+                      
+                      if (currentlyReadingShelf) {
+                        // Update existing shelf
+                        currentlyReadingShelf.books = [newBook, ...(currentlyReadingShelf.books || [])];
+                        currentlyReadingShelf.updatedAt = new Date().toISOString();
+                        
+                        await updateDoc(userRef, {
+                          shelves: shelves.map(s => 
+                            s.id === currentlyReadingShelf.id ? currentlyReadingShelf : s
+                          )
+                        });
+                      } else {
+                        // Create new shelf
+                        const newShelf = {
+                          id: `shelf-${Date.now()}`,
+                          name: "Currently Reading",
+                          books: [newBook],
+                          createdAt: new Date().toISOString(),
+                          updatedAt: new Date().toISOString(),
+                          reactions: { hearts: [] }
+                        };
+                        
+                        await updateDoc(userRef, {
+                          shelves: [...shelves, newShelf]
+                        });
+                        
+                        // Notify followers
+                        const followersQuery = query(
+                          collection(db, "users"),
+                          where("following", "array-contains", { uid: currentUser.uid })
+                        );
+                        
+                        const followersSnapshot = await getDocs(followersQuery);
+                        followersSnapshot.forEach(async (followerDoc) => {
+                          const followerData = followerDoc.data();
+                          const notifications = followerData.notifications || [];
+                          
+                          const newNotification = {
+                            id: `book-update-${Date.now()}`,
+                            type: "book_update",
+                            user: {
+                              uid: currentUser.uid,
+                              name: currentUser.name || currentUser.displayName,
+                              email: currentUser.email
+                            },
+                            message: `is now reading "${currentlyReading}"`,
+                            timestamp: new Date().toISOString(),
+                            read: false
+                          };
+                          
+                          await updateDoc(doc(db, "users", followerDoc.id), {
+                            notifications: [newNotification, ...notifications].slice(0, 50)
+                          });
+                        });
+                      }
+                      
+                      alert(`Updated your "Currently Reading" shelf with "${currentlyReading}"`);
+                      setCurrentlyReading("");
+                      
+                      // Refresh user data
+                      fetchUsersData();
+                    } catch (err) {
+                      console.error("Error updating currently reading:", err);
+                      alert("Something went wrong. Please try again.");
+                    } finally {
+                      setLoading(false);
+                    }
+                  }}
+                >
+                  Update
+                </button>
+              </div>
+            </div>
+          )}
+          
           {/* Feature Cards */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
             {featureMap.map(feature => {
@@ -344,6 +454,10 @@ export default function Home({ users }) {
                   onClick={() => {
                     if (isLibraryFeature) {
                       navigate("/tabs/add-books");
+                    } else if (feature.label === "Join the Community") {
+                      navigate("/tabs/communities");
+                    } else if (feature.label === "Book Exchange") {
+                      navigate("/tabs/book-exchange");
                     } else {
                       setShowStoryInput(feature);
                     }
@@ -408,10 +522,10 @@ export default function Home({ users }) {
               className="w-full p-4 rounded-lg bg-gray-800/90 border border-gray-700 text-white resize-none focus:outline-none focus:ring-2 focus:ring-purple-500"
               rows={5}
               placeholder={
-                showStoryInput.label === "Wanna Swap?" 
-                  ? "Describe the book you want to swap and what you're looking for in return..."
-                : showStoryInput.label === "Take It, It's Yours!" 
-                  ? "Tell the community which books you're giving away and how to claim them..."
+                showStoryInput.label === "Book Exchange" 
+                  ? "Ask to borrow a book or request recommendations. Describe what you're looking for..."
+                : showStoryInput.label === "Join the Community" 
+                  ? "Share your thoughts about book communities you'd like to join or create..."
                 : "Share your thoughts with the community..."
               }
             />

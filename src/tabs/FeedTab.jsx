@@ -1,10 +1,19 @@
 // FeedTab.jsx
 import React, { useState } from "react";
 import { Activity, Heart, BookmarkSimple, UserPlus, ChatCircleText } from "phosphor-react";
-import Shelf from "./Shelf";
+import { useNavigate } from "react-router-dom";
+import ShelfCard from "../components/ShelfCard";
 
 export default function FeedTab({ users, currentUser, handleHeartReaction, setShowStoryInput, featureMap }) {
   const [expandedStories, setExpandedStories] = useState([]);
+  const [refreshKey, setRefreshKey] = useState(0);
+  const [recommendationModal, setRecommendationModal] = useState({
+    isOpen: false,
+    shelfOwner: null,
+    shelfId: null,
+    shelfName: ""
+  });
+  const navigate = useNavigate();
   
   // Filter users who have actually shared stories with text content
   const usersWithStories = users.filter(user => user.stories?.[0]?.text);
@@ -19,38 +28,43 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
   };
 
   // Combined activity feed with all types of updates
-  const activityItems = [
-    // Stories
-    ...usersWithStories.map(user => ({
-      type: 'story',
-      user,
-      data: user.stories[0],
-      timestamp: user.stories[0].timestamp
-    })),
-    
-    // All shelf updates - show only shelves with books
-    ...users.flatMap(user => {
-      if (!user.shelves) return [];
-      
-      return user.shelves
-        .filter(shelf => shelf.books && shelf.books.length > 0) // Only include shelves with books
-        .map(shelf => ({
-          type: 'shelf_update',
-          user,
-          data: shelf,
-          timestamp: shelf.updatedAt || new Date().toISOString()
-        }));
-    }),
-    
-    // New users
-    ...users.filter(user => user.createdAt)
-      .map(user => ({
-        type: 'new_user',
+  const activityItems = React.useMemo(() => {
+    const items = [
+      // Stories
+      ...usersWithStories.map(user => ({
+        type: 'story',
         user,
-        data: null,
-        timestamp: user.createdAt
-      }))
-  ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        data: user.stories[0],
+        timestamp: user.stories[0].timestamp
+      })),
+      
+      // All shelf updates - show only shelves with books
+      ...users.flatMap(user => {
+        if (!user.shelves) return [];
+        
+        return user.shelves
+          .filter(shelf => shelf.books && shelf.books.length > 0) // Only include shelves with books
+          .map(shelf => ({
+            type: 'shelf_update',
+            user,
+            data: shelf,
+            timestamp: shelf.updatedAt || new Date().toISOString()
+          }));
+      }),
+      
+      // New users
+      ...users.filter(user => user.createdAt)
+        .map(user => ({
+          type: 'new_user',
+          user,
+          data: null,
+          timestamp: user.createdAt
+        }))
+    ];
+    
+    // Shuffle the items instead of sorting by timestamp
+    return items.sort(() => 0.5 - Math.random());
+  }, [users, usersWithStories, refreshKey]); // Include refreshKey in dependencies to trigger re-shuffle
 
   // Empty state check
   const isEmpty = usersWithStories.length === 0 && users.filter(user => user.shelves?.length > 0).length === 0;
@@ -64,12 +78,21 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
             <Activity size={22} className="text-purple-400" />
             <h2 className="text-xl font-bold">Recent Activity</h2>
           </div>
-          <button 
-            onClick={() => setShowStoryInput(featureMap[0])}
-            className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
-          >
-            Share something
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setRefreshKey(prev => prev + 1)}
+              className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1"
+              title="Shuffle content"
+            >
+              Shuffle
+            </button>
+            <button 
+              onClick={() => setShowStoryInput(featureMap[0])}
+              className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
+            >
+              Share something
+            </button>
+          </div>
         </div>
         
         <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
@@ -156,35 +179,57 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                     
                     {shelf && (
                       <div className="overflow-x-auto pb-2 hide-scrollbar">
-                        <div className="space-y-4">
-                          <div className="shelf-container">
-                            <h4 className="text-sm font-medium text-gray-300 mb-2">
-                              {shelf.books?.length || 0} {shelf.books?.length === 1 ? 'book' : 'books'} on this shelf
-                            </h4>
-                            <Shelf
-                              books={shelf.books?.slice(0, 5) || []}
-                              title={null}
-                              compact={true}
-                            />
-                            <div className="flex justify-end mt-2">
-                              <button
-                                onClick={(e) => handleHeartReaction(e, user, shelf, 'shelf')}
-                                className="flex items-center gap-1 text-xs"
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="text-sm font-medium text-gray-300">
+                            {shelf.books?.length || 0} {shelf.books?.length === 1 ? 'book' : 'books'} on this shelf
+                          </h4>
+                          <div className="flex items-center gap-2">
+                            {currentUser && currentUser.uid !== user.uid && (
+                              <button 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  // Open recommendation modal
+                                  setRecommendationModal({
+                                    isOpen: true,
+                                    shelfOwner: user,
+                                    shelfId: shelf.id,
+                                    shelfName: shelf.name
+                                  });
+                                }}
+                                className="p-1.5 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
+                                title="Ask for recommendation"
                               >
-                                <Heart 
-                                  size={16} 
-                                  weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
-                                  className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
-                                    ? "text-red-500" 
-                                    : "text-gray-400 hover:text-red-500"} 
-                                />
-                                <span className="text-gray-400">
-                                  {shelf.reactions?.hearts?.length || 0}
-                                </span>
+                                <ChatCircleText size={14} className="text-blue-400" />
                               </button>
-                            </div>
+                            )}
+                            
+                            <button
+                              onClick={(e) => handleHeartReaction(e, user, shelf, 'shelf')}
+                              className="flex items-center gap-1 text-xs"
+                            >
+                              <Heart 
+                                size={16} 
+                                weight={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) ? "fill" : "regular"}
+                                className={shelf.reactions?.hearts?.includes(currentUser?.uid || currentUser?.username) 
+                                  ? "text-red-500" 
+                                  : "text-gray-400 hover:text-red-500"} 
+                              />
+                              <span className="text-gray-400">
+                                {shelf.reactions?.hearts?.length || 0}
+                              </span>
+                            </button>
                           </div>
                         </div>
+                        <ShelfCard
+                          shelf={shelf}
+                          shelfOwner={user}
+                          currentUser={currentUser}
+                          onHeartReaction={handleHeartReaction}
+                          compact={true}
+                          showHeader={true}
+                          showFooter={false}
+                          hideHeaderButtons={true}
+                        />
                       </div>
                     )}
                   </div>
