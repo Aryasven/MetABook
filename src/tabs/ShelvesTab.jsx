@@ -1,7 +1,7 @@
 // ShelvesTab.jsx
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookmarkSimple, MagnifyingGlass, User, Heart, Books, FunnelSimple, X, ArrowsDownUp, Star } from "phosphor-react";
+import { BookmarkSimple, MagnifyingGlass, User, Heart, Books, FunnelSimple, X, ArrowsDownUp, Star, ChatCircleText } from "phosphor-react";
 import { useAuth } from "../useAuth";
 import Shelf from "./Shelf";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
@@ -284,8 +284,9 @@ export default function ShelvesTab({ users, onHeartReaction }) {
       )}
 
       {/* All Shelves Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredShelves.map(shelf => (
+      <div className="max-h-[70vh] overflow-y-auto pr-2 hide-scrollbar">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filteredShelves.map(shelf => (
           <div 
             key={shelf.id}
             className={`bg-gray-800 rounded-xl border ${shelf.featured ? 'border-yellow-500/30' : 'border-gray-700'} overflow-hidden hover:border-purple-500 cursor-pointer transition-all`}
@@ -323,7 +324,7 @@ export default function ShelvesTab({ users, onHeartReaction }) {
                   className="p-1.5 rounded-full bg-gray-700 hover:bg-gray-600 transition-colors"
                   title="Ask for recommendation"
                 >
-                  <BookmarkSimple size={14} className="text-blue-400" />
+                  <ChatCircleText size={14} className="text-blue-400" />
                 </button>
                 
                 <button 
@@ -365,6 +366,7 @@ export default function ShelvesTab({ users, onHeartReaction }) {
             </div>
           </div>
         ))}
+        </div>
       </div>
       
       {/* Recommendation Request Modal */}

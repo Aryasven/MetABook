@@ -15,15 +15,17 @@ export function Contribute() {
     {
       id: "y2moosavAlTPeBq7CwDIggOTfM83",
       name: "Upasana",
-      role: "Founder & Chief Architect",
-      bio: "Explorer of books, builder of ideas, and dreamer of shelf-spanning stories."
-    },
-    {
+      role: "Lead Developer",
+      bio: "Book lover and code writer."
+    }
+    /* Temporarily removed
+    ,{
       id: "nvHrXn6EQOVu2kbiVKrNfdp6XEj1",
       name: "Tashefa",
       role: "Co-Founder & Community Director",
       bio: "Connector of readers, curator of stories, and architect of literary communities."
     }
+    */
   ];
 
   if (currentUser === null) {

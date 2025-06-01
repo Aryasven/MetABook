@@ -5,6 +5,7 @@ import {
   ChatCircleText, BookOpen, ArrowsLeftRight, Gift, 
   Megaphone, X, Books, BookmarkSimple, House, Activity
 } from "phosphor-react";
+import AppWalkthrough from "./components/AppWalkthrough";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, updateDoc } from "firebase/firestore";
 import { useAuth } from "./useAuth";
@@ -29,6 +30,7 @@ export default function Home({ users }) {
   const [loading, setLoading] = useState(false);
   const [expandedStories, setExpandedStories] = useState([]);
   const [activeTab, setActiveTab] = useState("feed");
+  const [showWalkthrough, setShowWalkthrough] = useState(false);
   const navigate = useNavigate();
   const { currentUser: authUser } = useAuth();
 
@@ -82,6 +84,18 @@ export default function Home({ users }) {
     
     fetchCurrentUser();
   }, [users, authUser]);
+  
+  // Check if user has seen walkthrough
+  useEffect(() => {
+    const hasSeenWalkthrough = localStorage.getItem('metabook_walkthrough_completed');
+    if (!hasSeenWalkthrough && authUser) {
+      // Show walkthrough for new users after a short delay
+      const timer = setTimeout(() => {
+        setShowWalkthrough(true);
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [authUser]);
   
   // Refresh data when tab changes
   useEffect(() => {
@@ -298,11 +312,20 @@ export default function Home({ users }) {
       {/* Welcome Section and Tab Navigation */}
       <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-700">
         <div className="p-3 pb-1">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-purple-600 p-2 rounded-full">
-              <Books size={24} weight="bold" />
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-600 p-2 rounded-full">
+                <Books size={24} weight="bold" />
+              </div>
+              <h1 className="text-xl font-bold">Welcome to MetABook</h1>
             </div>
-            <h1 className="text-xl font-bold">Welcome to MetABook</h1>
+            <button 
+              onClick={() => setShowWalkthrough(true)}
+              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-medium rounded-full flex items-center gap-1 animate-pulse"
+            >
+              <Activity size={16} />
+              App Tour
+            </button>
           </div>
           
           <p className="text-gray-300 mb-3">
@@ -474,6 +497,13 @@ export default function Home({ users }) {
           }
         `
       }} />
+      
+      {/* App Walkthrough */}
+      <AppWalkthrough 
+        isOpen={showWalkthrough} 
+        onClose={() => setShowWalkthrough(false)} 
+        setActiveTab={setActiveTab}
+      />
     </div>
   );
 }

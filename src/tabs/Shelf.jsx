@@ -1,6 +1,8 @@
 // Shelf.jsx
 import React, { useEffect, useState } from 'react';
 import { CaretDown, CaretUp } from 'phosphor-react';
+import BookInteractionModal from '../components/BookInteractionModal';
+import { useAuth } from '../useAuth';
 
 const BookCard = ({ book, compact }) => (
   <div className={`${compact ? "w-16 h-24" : "w-20 h-28"} bg-gray-800 rounded shadow flex items-center justify-center p-1 overflow-hidden`}>
@@ -13,9 +15,12 @@ const BookCard = ({ book, compact }) => (
   </div>
 );
 
-const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = null }) => {
+const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = null, shelfOwner = null }) => {
   const [booksPerRow, setBooksPerRow] = useState(6);
   const [expanded, setExpanded] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [showBookModal, setShowBookModal] = useState(false);
+  const { currentUser } = useAuth();
   
   // Update books per row based on screen size and compact mode
   useEffect(() => {
@@ -70,6 +75,10 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
     e.stopPropagation();
     if (onBookClick) {
       onBookClick(book);
+    } else {
+      // If no external click handler, show the book interaction modal
+      setSelectedBook(book);
+      setShowBookModal(true);
     }
   };
 
@@ -121,6 +130,15 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
           </div>
         ))}
       </div>
+      
+      {/* Book Interaction Modal */}
+      <BookInteractionModal
+        book={selectedBook}
+        isOpen={showBookModal}
+        onClose={() => setShowBookModal(false)}
+        currentUser={currentUser}
+        shelfOwner={shelfOwner}
+      />
     </div>
   );
 };

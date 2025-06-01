@@ -5,6 +5,7 @@ import {
   BookmarkSimple, User, Heart, Books, ArrowLeft, 
   ChatCircleText, UserPlus, UserMinus, Share
 } from "phosphor-react";
+import BookInteractionModal from "../components/BookInteractionModal";
 import { useAuth } from "../useAuth";
 import Shelf from "./Shelf";
 import { doc, updateDoc, getDoc } from "firebase/firestore";
@@ -17,6 +18,8 @@ export default function ShelfView({ users }) {
   const [loading, setLoading] = useState(false);
   const [isFollowing, setIsFollowing] = useState(false);
   const [showRecommendModal, setShowRecommendModal] = useState(false);
+  const [selectedBook, setSelectedBook] = useState(null);
+  const [showBookModal, setShowBookModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const { currentUser } = useAuth();
@@ -407,6 +410,11 @@ export default function ShelfView({ users }) {
             books={shelf.books || []}
             title={null}
             compact={false}
+            shelfOwner={shelfOwner}
+            onBookClick={(book) => {
+              setSelectedBook(book);
+              setShowBookModal(true);
+            }}
           />
         </div>
       </div>
@@ -419,6 +427,15 @@ export default function ShelfView({ users }) {
         shelfId={shelf.id}
         shelfName={shelf.name}
         currentUser={currentUser}
+      />
+      
+      {/* Book Interaction Modal */}
+      <BookInteractionModal
+        book={selectedBook}
+        isOpen={showBookModal}
+        onClose={() => setShowBookModal(false)}
+        currentUser={currentUser}
+        shelfOwner={shelfOwner}
       />
     </div>
   );
