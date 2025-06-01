@@ -69,7 +69,7 @@ export default function ReadingStats({ user }) {
           <h3 className="font-medium text-sm">My Reading Stats</h3>
         </div>
         <Link 
-          to={`/shelf/${user.uid}`}
+          to="/tabs/add-books?tab=shelves"
           className="text-xs text-purple-400 hover:text-purple-300 flex items-center gap-0.5"
         >
           View All <ArrowRight size={10} />

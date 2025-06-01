@@ -1,9 +1,11 @@
 // FeedTab.jsx
 import React, { useState } from "react";
-import { Activity, Heart, BookmarkSimple, UserPlus, ChatCircleText } from "phosphor-react";
+import { Activity, Heart, BookmarkSimple, UserPlus, ChatCircleText, Trash } from "phosphor-react";
 import { useNavigate } from "react-router-dom";
 import ShelfCard from "../components/ShelfCard";
 import ReadingStats from "../components/ReadingStats";
+import { doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
 export default function FeedTab({ users, currentUser, handleHeartReaction, setShowStoryInput, featureMap }) {
   const [expandedStories, setExpandedStories] = useState([]);
@@ -26,6 +28,42 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
         ? prev.filter(id => id !== userId) 
         : [...prev, userId]
     );
+  };
+
+  // Handle deleting a story
+  const handleDeleteStory = async (e, user, story) => {
+    e.stopPropagation();
+    
+    // Confirm deletion
+    if (!window.confirm("Are you sure you want to delete this post?")) {
+      return;
+    }
+    
+    try {
+      // Get user's stories
+      const userRef = doc(db, "users", currentUser.uid);
+      const updatedStories = user.stories.filter(s => s.timestamp !== story.timestamp);
+      
+      // Update in Firestore
+      await updateDoc(userRef, { stories: updatedStories });
+      
+      // Update local state
+      if (typeof window.updateUsers === 'function') {
+        const updatedUsers = users.map(u => {
+          if (u.uid === currentUser.uid) {
+            return { ...u, stories: updatedStories };
+          }
+          return u;
+        });
+        window.updateUsers(updatedUsers);
+      }
+      
+      // Refresh the feed
+      setRefreshKey(prev => prev + 1);
+    } catch (err) {
+      console.error("Error deleting story:", err);
+      alert("Failed to delete the post. Please try again.");
+    }
   };
 
   // Combined activity feed with all types of updates
@@ -110,6 +148,8 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                 const typeMatch = featureMap.find(f => f.label === story.type);
                 const Icon = typeMatch?.icon || ChatCircleText;
                 const colorClass = typeMatch?.lightColor || "text-gray-400";
+                const isOwnStory = currentUser && (user.uid === currentUser.uid);
+                const isBookExchange = story.type === "Book Exchange" || story.type === "Review Request";
                 
                 return (
                   <div
@@ -117,14 +157,25 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                     className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
                     onClick={() => toggleExpandStory(user.uid || user.username)}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="bg-gray-700 p-1.5 rounded-full">
-                        <Icon size={16} className={colorClass} />
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-gray-700 p-1.5 rounded-full">
+                          <Icon size={16} className={colorClass} />
+                        </div>
+                        <div>
+                          <span className="font-semibold block">{user.name || user.username}</span>
+                          <span className="text-xs text-gray-400">{typeMatch?.label || "Shared a story"}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="font-semibold block">{user.name || user.username}</span>
-                        <span className="text-xs text-gray-400">{typeMatch?.label || "Shared a story"}</span>
-                      </div>
+                      {isOwnStory && isBookExchange && (
+                        <button
+                          onClick={(e) => handleDeleteStory(e, user, story)}
+                          className="p-1.5 rounded-full hover:bg-gray-700 text-gray-400 hover:text-red-400 transition-colors"
+                          title="Delete post"
+                        >
+                          <Trash size={14} />
+                        </button>
+                      )}
                     </div>
                     <div className="relative min-h-[80px]">
                       <p className={`text-gray-300 ${expandedStories.includes(user.uid || user.username) ? '' : 'line-clamp-4'}`}>{story.text}</p>

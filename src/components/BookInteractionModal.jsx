@@ -6,10 +6,23 @@ import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
 export default function BookInteractionModal({ book, isOpen, onClose, currentUser, shelfOwner }) {
-  const [activeTab, setActiveTab] = useState('info');
   const [loading, setLoading] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const navigate = useNavigate();
+  
+  // Move useEffect before the early return
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    } else {
+      document.body.style.overflow = 'auto'; // Restore scrolling when modal closes
+    }
+    
+    return () => {
+      document.body.style.overflow = 'auto'; // Cleanup on unmount
+    };
+  }, [isOpen]);
   
   if (!isOpen || !book) return null;
   
@@ -264,27 +277,6 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
       setLoading(false);
     }
   };
-  
-  // Handle view book details
-  const handleViewBookDetails = () => {
-    // Check if the route exists, otherwise just close the modal
-    // For now, just close the modal since the book details page doesn't exist yet
-    onClose();
-  };
-  
-  // Scroll to top when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      window.scrollTo(0, 0);
-      document.body.style.overflow = 'hidden'; // Prevent background scrolling
-    } else {
-      document.body.style.overflow = 'auto'; // Restore scrolling when modal closes
-    }
-    
-    return () => {
-      document.body.style.overflow = 'auto'; // Cleanup on unmount
-    };
-  }, [isOpen]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-start justify-center z-50 p-4 pt-16 overflow-y-auto">
@@ -349,7 +341,11 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
                 {shelfOwner && currentUser && shelfOwner.uid !== currentUser.uid && (
                   <>
                     <button 
-                      onClick={handleAskToBorrow}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAskToBorrow();
+                      }}
                       disabled={loading || requestSent}
                       className="px-3 py-1 text-xs rounded-full flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-white"
                     >
@@ -357,7 +353,11 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
                       Ask to Borrow
                     </button>
                     <button 
-                      onClick={handleAskForReview}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleAskForReview();
+                      }}
                       disabled={loading || requestSent}
                       className="px-3 py-1 text-xs rounded-full flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-white"
                     >
@@ -370,58 +370,33 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
             </div>
           </div>
           
-          <div className="flex border-b border-gray-700 mb-3">
-            <button
-              onClick={() => setActiveTab('info')}
-              className={`px-4 py-2 text-sm ${activeTab === 'info' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400'}`}
-            >
-              Info
-            </button>
-            <button
-              onClick={() => setActiveTab('actions')}
-              className={`px-4 py-2 text-sm ${activeTab === 'actions' ? 'text-purple-400 border-b-2 border-purple-400' : 'text-gray-400'}`}
-            >
-              Actions
-            </button>
-          </div>
-          
-          {activeTab === 'info' && (
-            <div className="text-sm text-gray-300">
-              <p className="line-clamp-4">{bookInfo.description || 'No description available.'}</p>
-              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
-                <div>
-                  <span className="text-gray-500">Pages:</span> {bookInfo.pageCount || 'N/A'}
-                </div>
-                <div>
-                  <span className="text-gray-500">Category:</span> {bookInfo.categories?.[0] || 'N/A'}
-                </div>
-                <div>
-                  <span className="text-gray-500">Language:</span> {bookInfo.language || 'N/A'}
-                </div>
-                <div>
-                  <span className="text-gray-500">Publisher:</span> {bookInfo.publisher || 'N/A'}
-                </div>
+          {/* Book Description */}
+          <div className="text-sm text-gray-300 mt-4">
+            <p className="line-clamp-4">{bookInfo.description || 'No description available.'}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+              <div>
+                <span className="text-gray-500">Pages:</span> {bookInfo.pageCount || 'N/A'}
+              </div>
+              <div>
+                <span className="text-gray-500">Category:</span> {bookInfo.categories?.[0] || 'N/A'}
+              </div>
+              <div>
+                <span className="text-gray-500">Language:</span> {bookInfo.language || 'N/A'}
+              </div>
+              <div>
+                <span className="text-gray-500">Publisher:</span> {bookInfo.publisher || 'N/A'}
               </div>
             </div>
-          )}
+          </div>
           
-          {activeTab === 'actions' && (
-            <div className="space-y-3">
-              {requestSent && (
-                <div className="p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-center">
-                  <p className="text-green-400 font-medium">Request sent successfully!</p>
-                  <p className="text-xs text-gray-300 mt-1">The shelf owner will be notified.</p>
-                </div>
-              )}
-              <button 
-                onClick={onClose}
-                className="w-full flex items-center gap-2 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <X size={18} className="text-purple-400" />
-                <span>Close</span>
-              </button>
-            </div>
-          )}
+          {/* Close Button */}
+          <button 
+            onClick={onClose}
+            className="w-full flex items-center justify-center gap-2 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors mt-4"
+          >
+            <X size={18} className="text-purple-400" />
+            <span>Close</span>
+          </button>
         </div>
       </div>
     </div>

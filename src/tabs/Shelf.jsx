@@ -79,6 +79,7 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
       // If no external click handler, show the book interaction modal
       setSelectedBook(book);
       setShowBookModal(true);
+      console.log("Opening modal for book:", book.volumeInfo?.title); // Debug log
     }
   };
 
@@ -121,7 +122,7 @@ const Shelf = ({ books, title, compact = false, maxRows = null, onBookClick = nu
                 <div 
                   key={book.id} 
                   onClick={(e) => handleBookClick(e, book)}
-                  className={onBookClick ? "cursor-pointer hover:scale-105 transition-transform" : ""}
+                  className="cursor-pointer hover:scale-105 transition-transform"
                 >
                   <BookCard book={book} compact={compact} />
                 </div>
