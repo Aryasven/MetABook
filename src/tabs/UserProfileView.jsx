@@ -182,6 +182,14 @@ export default function UserProfileView() {
   
   return (
     <div className="max-w-4xl mx-auto p-4 space-y-6">
+      {/* Back button */}
+      <button
+        onClick={() => navigate("/tabs")}
+        className="flex items-center gap-1 text-purple-400 hover:text-purple-300 mb-3"
+      >
+        ← Back to Home
+      </button>
+      
       {/* User Header */}
       <div className="bg-gradient-to-r from-gray-900/90 to-gray-800/90 rounded-xl p-6 border border-gray-700 shadow-lg">
         <div className="flex items-center justify-between mb-4">
