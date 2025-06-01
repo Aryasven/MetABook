@@ -1,7 +1,7 @@
 // BookInteractionModal.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, BookOpen, ChatCircleText, ArrowsLeftRight, Check, BookmarkSimple } from 'phosphor-react';
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc } from 'firebase/firestore';
+import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useNavigate } from 'react-router-dom';
 
@@ -131,6 +131,44 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
           notifications: [newNotification, ...notifications].slice(0, 50)
         });
         
+        // Create a story post about this review request
+        const currentUserRef = doc(db, "users", currentUser.uid);
+        const currentUserSnap = await getDoc(currentUserRef);
+        
+        if (currentUserSnap.exists()) {
+          const currentUserData = currentUserSnap.data();
+          const stories = currentUserData.stories || [];
+          
+          // Create new story
+          const newStory = {
+            type: "Review Request",
+            text: `I'm looking for a review on "${bookInfo.title}" by ${bookInfo.authors?.[0] || 'Unknown'}. Anyone read this book?`,
+            timestamp: new Date().toISOString(),
+            reactions: { hearts: [] },
+            book: {
+              id: book.id,
+              title: bookInfo.title,
+              author: bookInfo.authors?.[0] || 'Unknown',
+              cover: bookInfo.imageLinks?.thumbnail
+            }
+          };
+          
+          // Update stories in Firestore
+          await updateDoc(currentUserRef, {
+            stories: [newStory, ...stories]
+          });
+          
+          // Update global users state if available
+          if (typeof window.updateUsers === 'function') {
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const userData = usersSnapshot.docs.map(doc => ({
+              uid: doc.id,
+              ...doc.data()
+            }));
+            window.updateUsers(userData);
+          }
+        }
+        
         setRequestSent(true);
       }
     } catch (err) {
@@ -180,6 +218,44 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
           notifications: [newNotification, ...notifications].slice(0, 50)
         });
         
+        // Create a story post about this borrow request
+        const currentUserRef = doc(db, "users", currentUser.uid);
+        const currentUserSnap = await getDoc(currentUserRef);
+        
+        if (currentUserSnap.exists()) {
+          const currentUserData = currentUserSnap.data();
+          const stories = currentUserData.stories || [];
+          
+          // Create new story
+          const newStory = {
+            type: "Book Exchange",
+            text: `I'm looking to borrow "${bookInfo.title}" by ${bookInfo.authors?.[0] || 'Unknown'}. Anyone have a copy?`,
+            timestamp: new Date().toISOString(),
+            reactions: { hearts: [] },
+            book: {
+              id: book.id,
+              title: bookInfo.title,
+              author: bookInfo.authors?.[0] || 'Unknown',
+              cover: bookInfo.imageLinks?.thumbnail
+            }
+          };
+          
+          // Update stories in Firestore
+          await updateDoc(currentUserRef, {
+            stories: [newStory, ...stories]
+          });
+          
+          // Update global users state if available
+          if (typeof window.updateUsers === 'function') {
+            const usersSnapshot = await getDocs(collection(db, "users"));
+            const userData = usersSnapshot.docs.map(doc => ({
+              uid: doc.id,
+              ...doc.data()
+            }));
+            window.updateUsers(userData);
+          }
+        }
+        
         setRequestSent(true);
       }
     } catch (err) {
@@ -191,13 +267,27 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
   
   // Handle view book details
   const handleViewBookDetails = () => {
-    // Navigate to book details page
-    navigate(`/book/${book.id}`);
+    // Check if the route exists, otherwise just close the modal
+    // For now, just close the modal since the book details page doesn't exist yet
     onClose();
   };
   
+  // Scroll to top when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      window.scrollTo(0, 0);
+      document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    } else {
+      document.body.style.overflow = 'auto'; // Restore scrolling when modal closes
+    }
+    
+    return () => {
+      document.body.style.overflow = 'auto'; // Cleanup on unmount
+    };
+  }, [isOpen]);
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-70 flex items-start justify-center z-50 p-4 pt-16 overflow-y-auto">
       <div className="bg-gray-900 border border-gray-700 rounded-xl shadow-2xl w-full max-w-md animate-fade-in">
         <div className="flex justify-between items-center p-4 border-b border-gray-700">
           <h3 className="text-lg font-bold text-white">{bookInfo.title}</h3>
@@ -208,6 +298,14 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
             <X size={20} />
           </button>
         </div>
+        
+        {/* Success message for requests */}
+        {requestSent && (
+          <div className="mx-4 mt-4 p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-center">
+            <p className="text-green-400 font-medium">Request sent successfully!</p>
+            <p className="text-xs text-gray-300 mt-1">The shelf owner will be notified.</p>
+          </div>
+        )}
         
         <div className="p-4">
           <div className="flex gap-4 mb-4">
@@ -223,7 +321,7 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
               <p className="text-sm text-gray-400">{bookInfo.authors?.join(', ')}</p>
               <p className="text-xs text-gray-500 mt-1">{bookInfo.publishedDate?.substring(0, 4)}</p>
               
-              <div className="flex gap-2 mt-3">
+              <div className="flex flex-wrap gap-2 mt-3">
                 <button 
                   onClick={handleMarkAsRead}
                   disabled={loading}
@@ -248,6 +346,26 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
                   {isWantToRead && <BookmarkSimple size={12} />}
                   Want to Read
                 </button>
+                {shelfOwner && currentUser && shelfOwner.uid !== currentUser.uid && (
+                  <>
+                    <button 
+                      onClick={handleAskToBorrow}
+                      disabled={loading || requestSent}
+                      className="px-3 py-1 text-xs rounded-full flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-white"
+                    >
+                      <ArrowsLeftRight size={12} className="text-green-400" />
+                      Ask to Borrow
+                    </button>
+                    <button 
+                      onClick={handleAskForReview}
+                      disabled={loading || requestSent}
+                      className="px-3 py-1 text-xs rounded-full flex items-center gap-1 bg-gray-700 hover:bg-gray-600 text-white"
+                    >
+                      <ChatCircleText size={12} className="text-blue-400" />
+                      Ask for Review
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -289,37 +407,18 @@ export default function BookInteractionModal({ book, isOpen, onClose, currentUse
           
           {activeTab === 'actions' && (
             <div className="space-y-3">
-              {requestSent ? (
+              {requestSent && (
                 <div className="p-3 bg-green-600/20 border border-green-600/30 rounded-lg text-center">
                   <p className="text-green-400 font-medium">Request sent successfully!</p>
                   <p className="text-xs text-gray-300 mt-1">The shelf owner will be notified.</p>
                 </div>
-              ) : (
-                <>
-                  <button 
-                    onClick={handleAskForReview}
-                    disabled={loading || !shelfOwner}
-                    className="w-full flex items-center gap-2 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <ChatCircleText size={18} className="text-blue-400" />
-                    <span>Ask for a Review</span>
-                  </button>
-                  <button 
-                    onClick={handleAskToBorrow}
-                    disabled={loading || !shelfOwner}
-                    className="w-full flex items-center gap-2 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
-                  >
-                    <ArrowsLeftRight size={18} className="text-green-400" />
-                    <span>Ask to Borrow</span>
-                  </button>
-                </>
               )}
               <button 
-                onClick={handleViewBookDetails}
+                onClick={onClose}
                 className="w-full flex items-center gap-2 p-3 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors"
               >
-                <BookOpen size={18} className="text-purple-400" />
-                <span>View Book Details</span>
+                <X size={18} className="text-purple-400" />
+                <span>Close</span>
               </button>
             </div>
           )}

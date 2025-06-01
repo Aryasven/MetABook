@@ -88,7 +88,7 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
               Shuffle
             </button>
             <button 
-              onClick={() => setShowStoryInput(featureMap[0])}
+              onClick={() => setShowStoryInput(featureMap[1])}
               className="text-sm text-purple-400 hover:text-purple-300 flex items-center gap-1"
             >
               Share something
@@ -278,7 +278,7 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                   <Activity size={32} className="mx-auto mb-2 text-gray-600" />
                   <p>No recent activity to show.</p>
                   <button
-                    onClick={() => setShowStoryInput(featureMap[0])}
+                    onClick={() => setShowStoryInput(featureMap[1])}
                     className="mt-2 text-purple-400 hover:text-purple-300 text-sm"
                   >
                     Be the first to share!

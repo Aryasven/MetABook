@@ -1,32 +1,62 @@
 // ReadingStats.jsx
-import React from 'react';
-import { BookOpen, Books, Trophy, ChartLine, Calendar, ArrowRight } from 'phosphor-react';
+import React, { useEffect } from 'react';
+import { BookOpen, Books, Trophy, ArrowRight } from 'phosphor-react';
 import { Link } from 'react-router-dom';
 
 export default function ReadingStats({ user }) {
+  // Debug logging to see user data structure
+  useEffect(() => {
+    if (user) {
+      console.log("User data for stats:", {
+        hasBooks: !!user.books,
+        readBooks: user.books?.read?.length || 0,
+        wantToReadBooks: user.books?.wantToRead?.length || 0,
+        shelves: user.shelves?.map(s => ({name: s.name, count: s.books?.length || 0})) || []
+      });
+    }
+  }, [user]);
+
   // Calculate reading stats
   const calculateStats = () => {
-    if (!user || !user.shelves) return { completed: 0, current: 0 };
+    if (!user) return { completed: 0, current: 0 };
     
-    // Find "Read" and "Currently Reading" shelves
-    const readShelf = user.shelves.find(shelf => 
-      shelf.name.toLowerCase() === "read" || 
-      shelf.name.toLowerCase() === "completed"
+    // Always prioritize the "Currently Reading" shelf for current reading count
+    const currentlyReadingShelf = user.shelves?.find(shelf => 
+      shelf.name?.toLowerCase() === "currently reading" || 
+      shelf.name?.toLowerCase() === "reading"
     );
-    
-    const currentlyReadingShelf = user.shelves.find(shelf => 
-      shelf.name.toLowerCase() === "currently reading" || 
-      shelf.name.toLowerCase() === "reading"
-    );
-    
-    // Count books
-    const completedBooks = readShelf?.books?.length || 0;
     const currentlyReading = currentlyReadingShelf?.books?.length || 0;
     
-    return {
-      completed: completedBooks,
-      current: currentlyReading
-    };
+    // Check for books in the "read" tab of the library
+    const readBooks = user.books?.read || [];
+    const completedBooks = readBooks.length;
+    
+    // If we have data from the read tab, use it for completed books
+    if (completedBooks > 0) {
+      return {
+        completed: completedBooks,
+        current: currentlyReading
+      };
+    }
+    
+    // Fallback to shelves for completed books if read tab doesn't have data
+    if (user.shelves) {
+      // Find "Read" shelf
+      const readShelf = user.shelves.find(shelf => 
+        shelf.name?.toLowerCase() === "read" || 
+        shelf.name?.toLowerCase() === "completed"
+      );
+      
+      // Count books from read shelf
+      const shelfCompletedBooks = readShelf?.books?.length || 0;
+      
+      return {
+        completed: shelfCompletedBooks,
+        current: currentlyReading
+      };
+    }
+    
+    return { completed: 0, current: currentlyReading };
   };
   
   const stats = calculateStats();
@@ -67,57 +97,6 @@ export default function ReadingStats({ user }) {
           </div>
         </div>
       </div>
-      
-      {/* 
-      FUTURE GAMIFICATION FEATURES:
-      
-      1. Reading Milestones
-      - Track and celebrate when users reach certain thresholds (5, 10, 25, 50, 100 books)
-      - Show progress toward next milestone
-      - Award virtual badges or trophies
-      
-      2. Reading Challenges
-      - "Read 12 books this year" with visual progress bar
-      - Genre challenges: "Read books from 5 different genres"
-      - Monthly themed challenges (e.g., "Read a book published in your birth year")
-      - Community challenges where users compete or collaborate
-      
-      3. Achievement Badges
-      - "Night Owl" for reading after midnight
-      - "Genre Explorer" for reading across different genres
-      - "Speed Reader" for finishing books quickly
-      - "Consistent Reader" for maintaining a streak
-      - Display badges on profile and in feed
-      
-      4. Reading Insights
-      - Charts showing reading patterns over time
-      - "Your favorite genre is Fantasy (35% of your books)"
-      - "You read most on Sundays"
-      - Reading speed and completion rate analytics
-      
-      5. Community Comparisons
-      - "You're in the top 10% of readers this month"
-      - "Your friends are currently reading [Book Title]"
-      - Optional leaderboards for most books read
-      - Friend activity feed
-      
-      6. Book Completion Progress
-      - Visual progress bars for books in the "Currently Reading" shelf
-      - Option to update % complete for each book
-      - Estimated completion date based on reading pace
-      
-      7. Reading Goals Widget
-      - Set and track personal reading goals
-      - Customizable goals (books per month/year)
-      - Celebration animations when goals are met
-      - Recommendations based on reading goals
-      
-      8. Reading Streaks
-      - Track consecutive days of reading
-      - Rewards for maintaining streaks
-      - "Don't break the chain" motivation
-      - Recovery mechanics for missed days
-      */}
     </div>
   );
 }
