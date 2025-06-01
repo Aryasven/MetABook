@@ -6,6 +6,7 @@ import Navbar from "./Navbar";
 import Login from "./Login";
 import Register from "./Register";
 import ShelfView from "./tabs/ShelfView";
+import UserProfileView from "./tabs/UserProfileView";
 import SidebarLayout from "./SidebarLayout";
 import AddBooks from "./tabs/AddBooksTab";
 import SeeMyShelf from "./tabs/SeeMyShelfTab";
@@ -124,6 +125,7 @@ export default function App() {
             </AuthRedirect>
           } />
           <Route path="/shelf/:username" element={<ShelfView />} />
+          <Route path="/user/:username" element={<UserProfileView />} />
           <Route path="/tabs" element={
             <ProtectedRoute>
               <SidebarLayout />

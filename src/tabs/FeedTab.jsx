@@ -221,7 +221,7 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                   <div
                     key={`shelf-${user.username || user.uid}-${shelf.id || index}`}
                     className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
-                    onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
+                    onClick={() => navigate(`/user/${user.uid || user.username}`)}
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <div className="bg-blue-700/30 p-1.5 rounded-full">
@@ -299,7 +299,7 @@ export default function FeedTab({ users, currentUser, handleHeartReaction, setSh
                   <div
                     key={`new-user-${user.username || user.uid}-${index}`}
                     className="rounded-xl shadow-lg p-3 bg-gray-800/90 border border-gray-700 hover:border-purple-500 transition-all cursor-pointer"
-                    onClick={() => navigate(`/shelf/${user.uid || user.username}?name=${encodeURIComponent(user.name || user.username)}`)}
+                    onClick={() => navigate(`/user/${user.uid || user.username}`)}
                   >
                     <div className="flex items-center gap-2 mb-3">
                       <div className="bg-green-700/30 p-1.5 rounded-full">
