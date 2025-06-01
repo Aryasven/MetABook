@@ -24,17 +24,19 @@ setPersistence(auth, browserLocalPersistence)
     console.error("Auth persistence error:", error);
   });
 
-// Disable Firestore persistence for iOS PWAs to prevent auth issues
-// iOS PWAs have specific limitations with IndexedDB in Safari
+// Configure Firestore persistence based on platform
 const isIOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
 const isPWA = typeof window !== 'undefined' && window.matchMedia('(display-mode: standalone)').matches;
 
+// Only enable persistence for non-iOS platforms
 if (!isIOS && typeof window !== 'undefined' && window.indexedDB) {
-  // Only enable persistence for non-iOS devices
   enableIndexedDbPersistence(db).catch((err) => {
     console.log('Firestore persistence error:', err.code);
   });
 }
+
+// Log platform detection for debugging
+console.log("Platform detection:", { isIOS, isPWA });
 
 // Add a helper function to check auth state - useful for debugging
 const checkAuthState = () => {
