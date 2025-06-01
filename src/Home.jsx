@@ -6,6 +6,7 @@ import {
   Megaphone, X, Books, BookmarkSimple, House, Activity
 } from "phosphor-react";
 import AppWalkthrough from "./components/AppWalkthrough";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { db } from "./firebase";
 import { collection, getDocs, doc, getDoc, updateDoc, query, where, addDoc } from "firebase/firestore";
 import { useAuth } from "./useAuth";
@@ -320,13 +321,16 @@ export default function Home({ users }) {
               </div>
               <h1 className="text-lg font-bold">Welcome to MetABook</h1>
             </div>
-            <button 
-              onClick={() => setShowWalkthrough(true)}
-              className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-medium rounded-full flex items-center gap-1 animate-pulse"
-            >
-              <Activity size={16} />
-              App Tour
-            </button>
+            <div className="flex items-center gap-2">
+              <PWAInstallPrompt compact={true} />
+              <button 
+                onClick={() => setShowWalkthrough(true)}
+                className="px-3 py-1 bg-yellow-500 hover:bg-yellow-600 text-black text-sm font-medium rounded-full flex items-center gap-1 animate-pulse"
+              >
+                <Activity size={16} />
+                App Tour
+              </button>
+            </div>
           </div>
           
           <p className="text-gray-300 mb-2 text-sm">
